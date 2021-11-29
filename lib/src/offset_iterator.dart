@@ -185,32 +185,35 @@ class OffsetIterator<T> {
 extension TransformExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> transform<R>(
     List<R> Function(T) pred, {
-    List<R> Function(dynamic err)? onError,
+    bool Function(T)? hasMore,
     R? seed,
     int retention = 0,
-  }) {
-    return OffsetIterator(
-      init: () => offset,
-      process: (offset) async {
-        final item = await pull(offset);
+  }) =>
+      OffsetIterator(
+        init: () => offset,
+        process: (offset) async {
+          final item = await pull(offset);
 
-        return item.match(
-          (item) => OffsetIteratorState(
-            acc: offset + 1,
-            chunk: pred(item.first),
-            hasMore: !isLastOffset(offset),
-          ),
-          () => OffsetIteratorState(
-            acc: offset,
-            chunk: [],
-            hasMore: state!.hasMore,
-          ),
-        );
-      },
-      seed: seed,
-      retention: retention,
-    );
-  }
+          return item.match(
+            (item) {
+              final more = hasMore != null ? hasMore(item.first) : true;
+
+              return OffsetIteratorState(
+                acc: more ? offset + 1 : offset,
+                chunk: more ? pred(item.first) : [],
+                hasMore: more || !isLastOffset(offset),
+              );
+            },
+            () => OffsetIteratorState(
+              acc: offset,
+              chunk: [],
+              hasMore: state!.hasMore,
+            ),
+          );
+        },
+        seed: seed,
+        retention: retention,
+      );
 }
 
 extension MapExtension<T> on OffsetIterator<T> {
@@ -230,6 +233,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
     R initialValue,
     R Function(R, T) reducer, {
     R? seed,
+    int retention = 0,
   }) {
     R acc = initialValue;
 
@@ -239,6 +243,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
         return [acc];
       },
       seed: seed,
+      retention: retention,
     );
   }
 }
@@ -258,6 +263,7 @@ extension DistinctExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> distinct({
     bool Function(T prev, T next)? equals,
     T? seed,
+    int retention = 0,
   }) {
     bool Function(T, T) eq = equals ?? (prev, next) => prev == next;
     T? prev = seed ?? _value;
@@ -269,15 +275,54 @@ extension DistinctExtension<T> on OffsetIterator<T> {
       }
 
       return eq(prev!, item) ? [] : [item];
-    }, seed: prev);
+    }, seed: prev, retention: retention);
+  }
+}
+
+extension TakeWhileExtension<T> on OffsetIterator<T> {
+  OffsetIterator<T> takeWhile(
+    bool Function(T item, T? prev) predicate, {
+    T? seed,
+    int retention = 0,
+  }) {
+    T? prev = seed ?? _value;
+
+    return transform(
+      (item) => [item],
+      hasMore: (item) => predicate(item, prev),
+      seed: prev,
+      retention: retention,
+    );
+  }
+}
+
+extension TakeUntilExtension<T> on OffsetIterator<T> {
+  OffsetIterator<T> takeUntil(
+    bool Function(T item, T? prev) predicate, {
+    T? seed,
+    int retention = 0,
+  }) {
+    T? prev = seed ?? _value;
+
+    return transform(
+      (item) => [item],
+      hasMore: (item) => !predicate(item, prev),
+      seed: prev,
+      retention: retention,
+    );
   }
 }
 
 extension AccumulateExtension<T> on OffsetIterator<IList<T>> {
-  OffsetIterator<IList<T>> accumulate({IList<T>? seed}) => scan(
+  OffsetIterator<IList<T>> accumulate({
+    IList<T>? seed,
+    int retention = 0,
+  }) =>
+      scan(
         IList(),
         (acc, chunk) => acc.addAll(chunk),
         seed: seed ?? _value,
+        retention: retention,
       );
 }
 
