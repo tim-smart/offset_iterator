@@ -3,8 +3,7 @@ import 'dart:convert';
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
-import 'package:offset_iterator/src/offset_iterator.dart';
-import 'package:offset_iterator/src/storage.dart';
+import 'package:offset_iterator_persist/src/storage.dart';
 
 Option<T> _readCache<T>(
   Storage storage,

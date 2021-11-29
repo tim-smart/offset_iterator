@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:fpdart/fpdart.dart' hide State;
-import 'package:offset_iterator/src/offset_iterator.dart';
+import 'package:offset_iterator/offset_iterator.dart';
 
 typedef OffsetIteratorValue<T> = Either<dynamic, Tuple2<Option<T>, bool>>;
 
