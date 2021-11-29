@@ -76,10 +76,11 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
     _demand().then((_) => _initialDemand(remaining - 1));
   }
 
-  Future<void> _demand() => iterator
-      .pull(_offset)
-      .then(_handleData)
-      .catchError((err) => _handleError(err));
+  Future<void> _demand() => iterator.pull(_offset).then((item) {
+        _handleData(item);
+      }).catchError((err) {
+        _handleError(err);
+      });
 
   void _handleData(Option<OffsetIteratorItem<T>> item) {
     final newState = item.match<OffsetIteratorValue<T>>(

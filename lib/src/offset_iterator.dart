@@ -289,7 +289,11 @@ extension TakeWhileExtension<T> on OffsetIterator<T> {
 
     return transform(
       (item) => [item],
-      hasMore: (item) => predicate(item, prev),
+      hasMore: (item) {
+        final more = predicate(item, prev);
+        prev = item;
+        return more;
+      },
       seed: prev,
       retention: retention,
     );
@@ -301,16 +305,12 @@ extension TakeUntilExtension<T> on OffsetIterator<T> {
     bool Function(T item, T? prev) predicate, {
     T? seed,
     int retention = 0,
-  }) {
-    T? prev = seed ?? _value;
-
-    return transform(
-      (item) => [item],
-      hasMore: (item) => !predicate(item, prev),
-      seed: prev,
-      retention: retention,
-    );
-  }
+  }) =>
+      takeWhile(
+        (item, prev) => !predicate(item, prev),
+        seed: seed,
+        retention: retention,
+      );
 }
 
 extension AccumulateExtension<T> on OffsetIterator<IList<T>> {

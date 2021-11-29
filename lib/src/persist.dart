@@ -58,9 +58,15 @@ extension PersistExtension<T> on OffsetIterator<T> {
   }) {
     key = 'OffsetIterator_$key';
     final seed = _readCache(storage, cache, key, fromJson);
+    final write = _writeCache(storage, cache, key, toJson);
+    T? prev = seed.toNullable();
 
     return tap(
-      _writeCache(storage, cache, key, toJson),
+      (item) {
+        if (prev != null && equals != null && equals(prev!, item)) return;
+        write(item);
+        prev = item;
+      },
       seed: seed.toNullable(),
     );
   }
@@ -73,24 +79,13 @@ extension PersistIListExtension<T> on OffsetIterator<IList<T>> {
     required String key,
     required Object? Function(T) toJson,
     required T Function(Object?) fromJson,
-  }) {
-    key = 'OffsetIterator_$key';
-    final seed = _readCache(
-      storage,
-      cache,
-      key,
-      (json) => IList.fromJson(json, fromJson),
-    );
-    final write = _writeCache<IList<T>>(
-      storage,
-      cache,
-      key,
-      (l) => l.toJson(toJson),
-    );
-
-    return takeUntil(
-      (next, prev) => prev != null && iListSublistEquality(prev, next),
-      seed: seed.toNullable(),
-    ).tap(write);
-  }
+  }) =>
+      persist(
+        storage: storage,
+        cache: cache,
+        key: key,
+        equals: iListSublistEquality,
+        toJson: (l) => l.toJson(toJson),
+        fromJson: (json) => IList.fromJson(json, fromJson),
+      );
 }
