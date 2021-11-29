@@ -89,7 +89,7 @@ extension PersistIListExtension<T> on OffsetIterator<IList<T>> {
     );
 
     return takeUntil(
-      (next, prev) => iListSublistEquality(prev!, next),
+      (next, prev) => prev != null && iListSublistEquality(prev, next),
       seed: seed.toNullable(),
     ).tap(write);
   }
