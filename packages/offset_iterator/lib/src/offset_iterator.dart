@@ -38,23 +38,40 @@ class OffsetIterator<T> {
 
   final InitCallback _init;
   final ProcessCallback<T> _process;
+  FutureOr<OffsetIteratorState<T>>? _processFuture;
   final CleanupCallback? _cleanup;
 
+  /// The latest state from the `process` function.
   OffsetIteratorState<T>? state;
-  FutureOr<OffsetIteratorState<T>>? _processFuture;
+  var _cancelled = false;
 
-  T? _value;
+  /// Get the current head value, or `null`.
   T? get valueOrNull => _value;
+  T? _value;
+
+  /// Get the current head value as an option.
   Option<T> get value => optionOf(_value);
 
+  /// How many items to retain in the log.
+  /// If set to a negative number (e.g. -1), it will retain everything.
+  /// Defaults to 0 (retains nothing).
   final int retention;
 
-  var _offset = 0;
+  /// The current head offset.
   int get offset => _offset;
+  var _offset = 0;
 
+  /// The buffer contains items that have yet to be pulled.
+  /// The `process` function can return a chunk of multiple items, but because
+  /// `pull` only returns one item at a time, the extra items are buffered.
   var buffer = Queue<T>();
+
+  /// The log contains previously pulled items. Retention is controlled by the
+  /// `rentention` property.
   final log = Queue<T>();
 
+  /// Check if there is more items after the specified offset.
+  /// If no offset it specified, it uses the head offset.
   bool hasMore([int? offset]) {
     offset ??= _offset;
     return offset < _offset ||
@@ -62,8 +79,11 @@ class OffsetIterator<T> {
         (state?.hasMore ?? true);
   }
 
+  /// Checks if the specified offset is the last item.
   bool isLastOffset(int offset) => !hasMore(offset);
 
+  /// Pull the next item. If `currentOffset` is not provided, it will use the
+  /// latest head offset.
   Future<Option<OffsetIteratorItem<T>>> pull([int? currentOffset]) async {
     if (state == null) {
       final initResult = _init();
@@ -128,8 +148,8 @@ class OffsetIterator<T> {
 
       buffer = Queue.from(state!.chunk);
 
-      if (!state!.hasMore && _cleanup != null) {
-        _cleanup!(state!.acc);
+      if (state!.hasMore == false) {
+        cancel();
       }
     }
 
@@ -137,10 +157,10 @@ class OffsetIterator<T> {
     if (buffer.isNotEmpty) {
       final item = buffer.removeFirst();
 
-      if (retention > 0 && _value != null) {
+      if (retention != 0 && _value != null) {
         log.add(_value!);
 
-        while (log.length > retention) {
+        while (retention > -1 && log.length > retention) {
           log.removeFirst();
         }
       }
@@ -154,8 +174,10 @@ class OffsetIterator<T> {
     return const None();
   }
 
+  /// Prevents any new items from being added to the buffer, and
   void cancel() {
-    if (state == null) return;
+    if (_cancelled || state == null) return;
+    _cancelled = true;
 
     if (_cleanup != null) {
       _cleanup!(state!.acc);
@@ -168,6 +190,9 @@ class OffsetIterator<T> {
     );
   }
 
+  /// Create an `OffsetIterator` from the provided `Stream`.
+  /// If a `ValueStream` with a seed is given, it will populate the iterator's
+  /// seed value.
   static OffsetIterator<T> fromStream<T>(
     Stream<T> stream, {
     int retention = 0,
@@ -201,6 +226,7 @@ class OffsetIterator<T> {
     );
   }
 
+  /// Create an `OffsetIterator` from the provided `Iterable`.
   static OffsetIterator<T> fromIterable<T>(
     Iterable<T> iterable, {
     int retention = 0,

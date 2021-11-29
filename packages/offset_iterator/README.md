@@ -1,3 +1,3 @@
 # offset_iterator
 
-`OffsetIterator` plus `OffsetIteratorBuilder` for dart and flutter.
+`OffsetIterator` is an offset-based async iterable for true pull-based data streaming. Inspired by Apache Kafka.
