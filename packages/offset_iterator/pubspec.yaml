@@ -1,6 +1,6 @@
 name: offset_iterator
 description: Pull based async iterator with offset tracking
-version: 0.0.7
+version: 0.0.8
 homepage: https://github.com/tim-smart/offset_iterator
 
 environment:
@@ -10,9 +10,9 @@ environment:
 dependencies:
   fast_immutable_collections: ^7.0.3
   fpdart: ^0.0.12
-  rxdart: ^0.27.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^1.0.0
+  rxdart: ^0.27.3

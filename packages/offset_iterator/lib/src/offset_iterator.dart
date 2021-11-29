@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:fpdart/fpdart.dart';
-import 'package:rxdart/rxdart.dart';
 
 class OffsetIteratorState<T> {
   const OffsetIteratorState({
@@ -173,22 +172,34 @@ class OffsetIterator<T> {
     Stream<T> stream, {
     int retention = 0,
     T? seed,
-  }) =>
-      OffsetIterator(
-        init: () => StreamIterator(stream),
-        process: (i) async {
-          final available = await i.moveNext();
+  }) {
+    final valueStreamSeed =
+        Option.tryCatch(() => (stream as dynamic).valueOrNull as T?);
 
-          return OffsetIteratorState(
-            acc: i,
-            chunk: available ? [i.current] : [],
-            hasMore: available,
-          );
-        },
-        cleanup: (i) => i.cancel(),
-        seed: seed ?? (stream is ValueStream<T> ? stream.valueOrNull : null),
-        retention: retention,
-      );
+    stream = valueStreamSeed.match(
+      (_) => stream.skip(1),
+      () => stream,
+    );
+
+    return OffsetIterator(
+      init: () => StreamIterator(stream),
+      process: (i) async {
+        final iter = i as StreamIterator<T>;
+        final available = await iter.moveNext();
+
+        return OffsetIteratorState(
+          acc: iter,
+          chunk: available ? [iter.current] : [],
+          hasMore: available,
+        );
+      },
+      cleanup: (i) => (i as StreamIterator<T>).cancel(),
+      seed: optionOf(seed)
+          .alt(() => valueStreamSeed.flatMap(optionOf))
+          .toNullable(),
+      retention: retention,
+    );
+  }
 
   static OffsetIterator<T> fromIterable<T>(
     Iterable<T> iterable, {

@@ -110,7 +110,7 @@ packages:
     source: hosted
     version: "1.8.0"
   rxdart:
-    dependency: "direct main"
+    dependency: "direct dev"
     description:
       name: rxdart
       url: "https://pub.dartlang.org"
