@@ -19,7 +19,7 @@ class OffsetIteratorBuilder<T> extends StatefulWidget {
     this.initialDemand = 1,
   }) : super(key: key);
 
-  final OffsetIterator<T, dynamic> iterator;
+  final OffsetIterator<T> iterator;
   final OffsetWidgetBuilder<T> builder;
   final int initialDemand;
 
@@ -28,16 +28,22 @@ class OffsetIteratorBuilder<T> extends StatefulWidget {
       _OffsetIteratorBuilderState<T>();
 }
 
-R withValue<T, R>(
-  OffsetIteratorValue<T> value, {
+R Function<R>({
   required R Function(dynamic) error,
   required R Function(T, bool) data,
   required R Function() loading,
-}) =>
-    value.match(error, (s) => s.first.match((v) => data(v, s.second), loading));
+}) withValue<T>(OffsetIteratorValue<T> value) => <R>({
+      required error,
+      required data,
+      required loading,
+    }) =>
+        value.match(
+          error,
+          (s) => s.first.match((v) => data(v, s.second), loading),
+        );
 
 class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
-  OffsetIterator<T, dynamic> get iterator => widget.iterator;
+  OffsetIterator<T> get iterator => widget.iterator;
   OffsetIteratorValue<T> state = Either.right(tuple2(none(), true));
   late int _offset;
 
@@ -76,15 +82,22 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
       .catchError((err) => _handleError(err));
 
   void _handleData(Option<OffsetIteratorItem<T>> item) {
-    _offset = item.map((v) => v.second).getOrElse(() => _offset);
+    final newState = item.match<OffsetIteratorValue<T>>(
+      (item) {
+        _offset = item.second;
+        return Either.right(tuple2(
+          some(item.first),
+          !iterator.isLastOffset(_offset),
+        ));
+      },
+      () => state =
+          state.map((s) => s.copyWith(value2: !iterator.isLastOffset(_offset))),
+    );
+
+    if (newState == state) return;
 
     setState(() {
-      state = Either.right(tuple2(
-        item.map((v) => v.first),
-        item
-            .map((v) => iterator.isLastOffset(v.second))
-            .getOrElse(() => iterator.hasMore),
-      ));
+      state = newState;
     });
   }
 

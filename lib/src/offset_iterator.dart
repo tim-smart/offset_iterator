@@ -6,25 +6,25 @@ import 'package:fast_immutable_collections/fast_immutable_collections.dart'
 import 'package:fpdart/fpdart.dart';
 import 'package:rxdart/rxdart.dart';
 
-class OffsetIteratorState<T, Acc> {
+class OffsetIteratorState<T> {
   const OffsetIteratorState({
     required this.acc,
     required this.chunk,
     required this.hasMore,
   });
 
-  final Acc acc;
+  final dynamic acc;
   final List<T> chunk;
   final bool hasMore;
 }
 
 typedef OffsetIteratorItem<T> = Tuple2<T, int>;
 
-class OffsetIterator<T, Acc> {
+class OffsetIterator<T> {
   OffsetIterator({
-    required FutureOr<Acc> Function() init,
-    required Future<OffsetIteratorState<T, Acc>> Function(Acc) process,
-    void Function(Acc)? cleanup,
+    required FutureOr<dynamic> Function() init,
+    required Future<OffsetIteratorState<T>> Function(dynamic) process,
+    void Function(dynamic)? cleanup,
     T? seed,
     this.retention = 0,
   })  : _init = init,
@@ -35,12 +35,12 @@ class OffsetIterator<T, Acc> {
     value.filter((_) => retention > 0).map(log.add);
   }
 
-  final FutureOr<Acc> Function() _init;
-  final Future<OffsetIteratorState<T, Acc>> Function(Acc) _process;
-  final void Function(Acc)? _cleanup;
+  final FutureOr<dynamic> Function() _init;
+  final Future<OffsetIteratorState<T>> Function(dynamic) _process;
+  final void Function(dynamic)? _cleanup;
 
-  OffsetIteratorState<T, Acc>? state;
-  var _processing = false;
+  OffsetIteratorState<T>? state;
+  Future<OffsetIteratorState<T>>? _processFuture;
 
   T? _value;
   Option<T> get value => optionOf(_value);
@@ -56,15 +56,17 @@ class OffsetIterator<T, Acc> {
   bool get hasMore => (state?.hasMore ?? true) || buffer.isNotEmpty;
   bool isLastOffset(int offset) => !hasMore && offset >= _offset;
 
-  Future<Option<OffsetIteratorItem<T>>> pull([int? offset]) async {
+  Future<Option<OffsetIteratorItem<T>>> pull([int? currentOffset]) async {
     state ??= OffsetIteratorState(
       acc: await _init(),
       chunk: [],
       hasMore: true,
     );
 
+    final offset = currentOffset ?? _offset;
+
     // Handle offset requests for previous items
-    if (offset != null && offset < _offset) {
+    if (offset < _offset) {
       if (retention == 0 || offset == _offset - 1 || log.isEmpty) {
         return value.map((v) => tuple2(v, _offset));
       }
@@ -86,12 +88,15 @@ class OffsetIterator<T, Acc> {
         return const None();
       }
 
-      if (_processing) return const None();
-      _processing = true;
+      if (_processFuture != null) {
+        await _processFuture;
+        return pull(offset);
+      }
       try {
-        state = await _process(state!.acc);
+        _processFuture = _process(state!.acc);
+        state = await _processFuture;
       } finally {
-        _processing = false;
+        _processFuture = null;
       }
 
       buffer = Queue.from(state!.chunk);
@@ -136,7 +141,7 @@ class OffsetIterator<T, Acc> {
     );
   }
 
-  static OffsetIterator<T, StreamIterator<T>> fromStream<T>(
+  static OffsetIterator<T> fromStream<T>(
     Stream<T> stream, {
     int retention = 0,
     T? seed,
@@ -156,11 +161,31 @@ class OffsetIterator<T, Acc> {
         seed: seed ?? (stream is ValueStream<T> ? stream.valueOrNull : null),
         retention: retention,
       );
+
+  static OffsetIterator<T> fromIterable<T>(
+    Iterable<T> iterable, {
+    int retention = 0,
+    T? seed,
+  }) =>
+      OffsetIterator(
+        init: () {},
+        process: (acc) async => OffsetIteratorState(
+          acc: null,
+          chunk: iterable.toList(),
+          hasMore: false,
+        ),
+        seed: seed,
+        retention: retention,
+      );
+
+  static OffsetIterator<T> fromValue<T>(T value, {T? seed}) =>
+      fromIterable([value], seed: seed);
 }
 
-extension TransformExtension<T> on OffsetIterator<T, dynamic> {
-  OffsetIterator<R, int> transform<R>(
+extension TransformExtension<T> on OffsetIterator<T> {
+  OffsetIterator<R> transform<R>(
     List<R> Function(T) pred, {
+    List<R> Function(dynamic err)? onError,
     R? seed,
     int retention = 0,
   }) {
@@ -188,8 +213,8 @@ extension TransformExtension<T> on OffsetIterator<T, dynamic> {
   }
 }
 
-extension MapExtension<T> on OffsetIterator<T, dynamic> {
-  OffsetIterator<R, int> map<R>(
+extension MapExtension<T> on OffsetIterator<T> {
+  OffsetIterator<R> map<R>(
     R Function(T) pred, {
     int retention = 0,
   }) =>
@@ -200,8 +225,8 @@ extension MapExtension<T> on OffsetIterator<T, dynamic> {
       );
 }
 
-extension ScanExtension<T> on OffsetIterator<T, dynamic> {
-  OffsetIterator<R, int> scan<R>(
+extension ScanExtension<T> on OffsetIterator<T> {
+  OffsetIterator<R> scan<R>(
     R initialValue,
     R Function(R, T) reducer, {
     R? seed,
@@ -218,8 +243,8 @@ extension ScanExtension<T> on OffsetIterator<T, dynamic> {
   }
 }
 
-extension TapExtension<T> on OffsetIterator<T, dynamic> {
-  OffsetIterator<T, int> tap(
+extension TapExtension<T> on OffsetIterator<T> {
+  OffsetIterator<T> tap(
     void Function(T) effect, {
     T? seed,
   }) =>
@@ -229,9 +254,9 @@ extension TapExtension<T> on OffsetIterator<T, dynamic> {
       }, seed: seed ?? _value);
 }
 
-extension DistinctExtension<T> on OffsetIterator<T, dynamic> {
-  OffsetIterator<T, int> distinct(
-    bool Function(T prev, T next)? equals, {
+extension DistinctExtension<T> on OffsetIterator<T> {
+  OffsetIterator<T> distinct({
+    bool Function(T prev, T next)? equals,
     T? seed,
   }) {
     bool Function(T, T) eq = equals ?? (prev, next) => prev == next;
@@ -248,10 +273,37 @@ extension DistinctExtension<T> on OffsetIterator<T, dynamic> {
   }
 }
 
-extension AccumulateExtension<T> on OffsetIterator<IList<T>, dynamic> {
-  OffsetIterator<IList<T>, int> accumulate({IList<T>? seed}) => scan(
+extension AccumulateExtension<T> on OffsetIterator<IList<T>> {
+  OffsetIterator<IList<T>> accumulate({IList<T>? seed}) => scan(
         IList(),
         (acc, chunk) => acc.addAll(chunk),
         seed: seed ?? _value,
+      );
+}
+
+extension HandleErrorExtension<T> on OffsetIterator<T> {
+  OffsetIterator<T> handleError(
+    List<T> Function(dynamic, StackTrace) onError,
+  ) =>
+      OffsetIterator(
+        init: () => offset,
+        process: (offset) async {
+          List<T> chunk;
+          int newOffset = offset;
+
+          try {
+            final item = await pull(offset);
+            newOffset = item.map((v) => v.second).getOrElse(() => offset);
+            chunk = item.match((v) => [v.first], () => []);
+          } catch (err, stack) {
+            chunk = onError(err, stack);
+          }
+
+          return OffsetIteratorState(
+            acc: newOffset,
+            chunk: chunk,
+            hasMore: !isLastOffset(newOffset),
+          );
+        },
       );
 }
