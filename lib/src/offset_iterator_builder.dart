@@ -90,7 +90,7 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
           !iterator.isLastOffset(_offset),
         ));
       },
-      () => state =
+      () =>
           state.map((s) => s.copyWith(value2: !iterator.isLastOffset(_offset))),
     );
 

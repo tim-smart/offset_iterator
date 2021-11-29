@@ -201,7 +201,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
               return OffsetIteratorState(
                 acc: more ? offset + 1 : offset,
                 chunk: more ? pred(item.first) : [],
-                hasMore: more || !isLastOffset(offset),
+                hasMore: more && !isLastOffset(offset),
               );
             },
             () => OffsetIteratorState(

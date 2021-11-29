@@ -88,8 +88,8 @@ extension PersistIListExtension<T> on OffsetIterator<IList<T>> {
       (l) => l.toJson(toJson),
     );
 
-    return distinct(
-      equals: iListSublistEquality,
+    return takeUntil(
+      (next, prev) => iListSublistEquality(prev!, next),
       seed: seed.toNullable(),
     ).tap(write);
   }
