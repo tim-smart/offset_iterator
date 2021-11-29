@@ -1,3 +1,5 @@
+library offset_iterator_builder;
+
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:fpdart/fpdart.dart' hide State;
