@@ -1,5 +1,5 @@
 name: offset_iterator
-description: A new Flutter package project.
+description: Pull based async iterator with offset tracking
 version: 0.0.1
 homepage: https://github.com/tim-smart/offset_iterator
 
