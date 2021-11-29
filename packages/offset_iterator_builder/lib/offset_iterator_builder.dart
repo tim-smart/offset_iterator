@@ -48,6 +48,7 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   OffsetIterator<T> get iterator => widget.iterator;
   OffsetIteratorValue<T> state = Either.right(tuple2(none(), true));
   late int _offset;
+  bool _disposed = false;
 
   @override
   void initState() {
@@ -85,12 +86,14 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
       });
 
   void _handleData(Option<OffsetIteratorItem<T>> item) {
+    if (_disposed) return;
+
     final newState = item.match<OffsetIteratorValue<T>>(
       (item) {
         _offset = item.second;
         return Either.right(tuple2(
           some(item.first),
-          !iterator.isLastOffset(_offset),
+          iterator.hasMore(_offset),
         ));
       },
       () =>
@@ -105,6 +108,7 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   }
 
   void _handleError(dynamic err) {
+    if (_disposed) return;
     setState(() {
       state = Either.left(err);
     });
@@ -116,6 +120,7 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
 
   @override
   void dispose() {
+    _disposed = true;
     iterator.cancel();
     super.dispose();
   }
