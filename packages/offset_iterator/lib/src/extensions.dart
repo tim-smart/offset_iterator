@@ -9,42 +9,46 @@ extension TransformExtension<T> on OffsetIterator<T> {
     bool Function(T)? hasMore,
     R? seed,
     int retention = 0,
-  }) =>
-      OffsetIterator(
-        init: () => offset,
-        process: (offset) async {
-          final item = await pull(offset);
+  }) {
+    final parent = this;
 
-          return item.match(
-            (item) async {
-              final more = hasMore != null ? hasMore(item.first) : true;
+    return OffsetIterator(
+      init: () => offset,
+      process: (offset) async {
+        final item = await parent.pull(offset);
 
-              var chunk = <R>[];
-              if (more) {
-                final result = pred(item.first);
-                if (result is Future) {
-                  chunk = await result;
-                } else {
-                  chunk = result;
-                }
+        return item.match(
+          (item) async {
+            final newOffset = offset + 1;
+            final more = hasMore != null ? hasMore(item.first) : true;
+
+            var chunk = <R>[];
+            if (more) {
+              final result = pred(item.first);
+              if (result is Future) {
+                chunk = await result;
+              } else {
+                chunk = result;
               }
+            }
 
-              return OffsetIteratorState(
-                acc: more ? offset + 1 : offset,
-                chunk: chunk,
-                hasMore: more && this.hasMore(offset),
-              );
-            },
-            () => OffsetIteratorState(
-              acc: offset,
-              chunk: [],
-              hasMore: state!.hasMore,
-            ),
-          );
-        },
-        seed: seed,
-        retention: retention,
-      );
+            return OffsetIteratorState(
+              acc: newOffset,
+              chunk: chunk,
+              hasMore: more && parent.hasMore(newOffset),
+            );
+          },
+          () => OffsetIteratorState(
+            acc: offset,
+            chunk: [],
+            hasMore: parent.hasMore(offset),
+          ),
+        );
+      },
+      seed: seed,
+      retention: retention,
+    );
+  }
 }
 
 extension MapExtension<T> on OffsetIterator<T> {
@@ -173,26 +177,29 @@ extension AccumulateExtension<T> on OffsetIterator<IList<T>> {
 extension HandleErrorExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> handleError(
     List<T> Function(dynamic, StackTrace) onError,
-  ) =>
-      OffsetIterator(
-        init: () => offset,
-        process: (offset) async {
-          List<T> chunk;
-          int newOffset = offset;
+  ) {
+    final parent = this;
 
-          try {
-            final item = await pull(offset);
-            newOffset = item.map((v) => v.second).getOrElse(() => offset);
-            chunk = item.match((v) => [v.first], () => []);
-          } catch (err, stack) {
-            chunk = onError(err, stack);
-          }
+    return OffsetIterator(
+      init: () => parent.offset,
+      process: (offset) async {
+        List<T> chunk;
+        int newOffset = offset;
 
-          return OffsetIteratorState(
-            acc: newOffset,
-            chunk: chunk,
-            hasMore: !isLastOffset(newOffset),
-          );
-        },
-      );
+        try {
+          final item = await parent.pull(offset);
+          newOffset = item.map((v) => v.second).getOrElse(() => offset);
+          chunk = item.match((v) => [v.first], () => []);
+        } catch (err, stack) {
+          chunk = onError(err, stack);
+        }
+
+        return OffsetIteratorState(
+          acc: newOffset,
+          chunk: chunk,
+          hasMore: parent.hasMore(newOffset),
+        );
+      },
+    );
+  }
 }
