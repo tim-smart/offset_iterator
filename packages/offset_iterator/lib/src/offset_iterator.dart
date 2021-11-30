@@ -107,7 +107,7 @@ class OffsetIterator<T> {
 
     // Handle offset requests for previous items
     if (offset < _offset) {
-      if (retention == 0 || offset == _offset - 1) {
+      if (offset == _offset - 1) {
         return value;
       }
 
