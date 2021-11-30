@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -62,6 +63,13 @@ void main() {
   group('OffsetIterator.fromStream', () {
     test('it correctly drains the stream', () async {
       final i = OffsetIterator.fromStream(Stream.fromIterable([1, 2, 3, 4, 5]));
+      expect(await i.toList(), equals([1, 2, 3, 4, 5]));
+    });
+
+    test('sets the seed if a ValueStream is provided', () async {
+      final i = OffsetIterator.fromStream(
+          Stream.fromIterable([1, 2, 3, 4, 5]).shareValueSeeded(0));
+      expect(i.value, some(0));
       expect(await i.toList(), equals([1, 2, 3, 4, 5]));
     });
   });
