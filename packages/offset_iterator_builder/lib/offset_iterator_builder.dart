@@ -19,11 +19,13 @@ class OffsetIteratorBuilder<T> extends StatefulWidget {
     required this.iterator,
     required this.builder,
     this.initialDemand = 1,
+    this.startOffset,
   }) : super(key: key);
 
   final OffsetIterator<T> iterator;
   final OffsetWidgetBuilder<T> builder;
   final int initialDemand;
+  final int? startOffset;
 
   @override
   _OffsetIteratorBuilderState<T> createState() =>
@@ -61,16 +63,13 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.iterator != widget.iterator) {
-      oldWidget.iterator.cancel();
       _subscribe();
     }
   }
 
   void _subscribe() {
     _offset = iterator.offset;
-    iterator.value
-        .map((v) => some(tuple2(v, iterator.offset)))
-        .map(_handleData);
+    iterator.value.map((v) => _handleData(some(v)));
     _initialDemand(widget.initialDemand);
   }
 
@@ -79,32 +78,35 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
     _demand().then((_) => _initialDemand(remaining - 1));
   }
 
-  Future<void> _demand() => iterator.pull(_offset).then((item) {
-        _handleData(item);
-      }).catchError((err) {
-        _handleError(err);
-      });
+  Future<void> _demand() {
+    if (iterator.isLastOffset(_offset)) return Future.sync(() {});
 
-  void _handleData(Option<OffsetIteratorItem<T>> item) {
+    return iterator.pull(_offset).then((item) {
+      _offset = _offset + 1;
+      return _handleData(item);
+    }).catchError((err) {
+      _handleError(err);
+    });
+  }
+
+  Future<void> _handleData(Option<T> item) async {
     if (_disposed) return;
 
+    final hasMore = iterator.hasMore(_offset);
     final newState = item.match<OffsetIteratorValue<T>>(
-      (item) {
-        _offset = item.second;
-        return Either.right(tuple2(
-          some(item.first),
-          iterator.hasMore(_offset),
-        ));
-      },
-      () =>
-          state.map((s) => s.copyWith(value2: !iterator.isLastOffset(_offset))),
+      (item) => Either.right(tuple2(some(item), hasMore)),
+      () => state.map((s) => s.copyWith(value2: hasMore)),
     );
 
-    if (newState == state) return;
+    if (newState != state) {
+      setState(() {
+        state = newState;
+      });
+    }
 
-    setState(() {
-      state = newState;
-    });
+    if (hasMore && item.isNone()) {
+      await _demand();
+    }
   }
 
   void _handleError(dynamic err) {
@@ -121,7 +123,6 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   @override
   void dispose() {
     _disposed = true;
-    iterator.cancel();
     super.dispose();
   }
 }
