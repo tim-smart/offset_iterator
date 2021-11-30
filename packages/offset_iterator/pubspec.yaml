@@ -1,6 +1,6 @@
 name: offset_iterator
 description: Pull based async iterator with offset tracking
-version: 0.0.13
+version: 0.0.14
 homepage: https://github.com/tim-smart/offset_iterator
 
 environment:
