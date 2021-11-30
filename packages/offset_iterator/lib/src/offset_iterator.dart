@@ -85,7 +85,7 @@ class OffsetIterator<T> {
   Future<Option<T>> pull([int? currentOffset]) async {
     final offset = currentOffset ?? _offset;
     if (offset < 0 || offset > _offset) {
-      throw new RangeError.range(offset, 0, _offset, 'currentOffset');
+      throw RangeError.range(offset, 0, _offset, 'currentOffset');
     }
 
     if (state == null) {
@@ -152,7 +152,7 @@ class OffsetIterator<T> {
       final chunkLength = state!.chunk.length;
       if (chunkLength == 0) {
         return pull(offset);
-      } else if (chunkLength == 1){
+      } else if (chunkLength == 1) {
         return _nextItem(state!.chunk.first);
       }
 
