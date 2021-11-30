@@ -89,7 +89,7 @@ void main() {
   });
 
   group('.pull', () {
-    test('responds with the next item with its offset', () async {
+    test('responds with the next item', () async {
       final i = OffsetIterator.fromIterable([
         'the',
         'quick',
@@ -121,7 +121,7 @@ void main() {
       expect(await i.pull(3), some('fox'));
       expect(await i.pull(0), some('the'));
 
-      // If offset is out of range, it returns none
+      // If offset is out of range, it throws a RangeError
       await expectLater(i.pull(-1), throwsRangeError);
       await expectLater(i.pull(5), throwsRangeError);
     });
@@ -136,6 +136,8 @@ void main() {
       expect(await i.toList(), equals([1, 2, 3, 4, 5]));
       expect(i.value, equals(some(5)));
       expect(i.log.toList(), equals([2, 3, 4]));
+
+      expect(await i.toList(startOffset: 0), equals([2, 3, 4, 5]));
     });
 
     test('replaying', () async {
