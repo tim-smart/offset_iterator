@@ -11,7 +11,7 @@ Great for:
 ## Example
 
 Here is an example straight from the tests, that fetches up to 5 pages from a fake API.
-[You can view the test case here.](test/offset_iterator_test.dart#L11)
+[You can view the test case here.](tim-smart/offset_iterator/packages/offset_iterator/test/offset_iterator_test.dart#L11)
 
 Note that it will only call `fetchPage` once, as we only request one page.
 
@@ -44,7 +44,9 @@ print(firstPage.toNullable());
 
 ## Usage with Flutter
 
-A [`offset_iterator_builder`](../offset_iterator_builder) package is available.
+A
+[`offset_iterator_builder`](tim-smart/offset_iterator/packages/offset_iterator_builder)
+package is available.
 
 This package can be used to build widgets from an `OffsetIterator`'s value. The
 `builder` function is given the current `BuildContext`, the latest value from
