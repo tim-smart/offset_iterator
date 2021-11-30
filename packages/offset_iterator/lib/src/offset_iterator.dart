@@ -64,7 +64,7 @@ class OffsetIterator<T> {
   /// The buffer contains items that have yet to be pulled.
   /// The `process` function can return a chunk of multiple items, but because
   /// `pull` only returns one item at a time, the extra items are buffered.
-  var buffer = Queue<T>();
+  final buffer = Queue<T>();
 
   /// The log contains previously pulled items. Retention is controlled by the
   /// `rentention` property.
@@ -136,9 +136,9 @@ class OffsetIterator<T> {
         _processFuture = _process(state!.acc);
 
         if (_processFuture is Future) {
-          final nextItem = await _processFuture;
+          final nextState = await _processFuture;
           if (!state!.hasMore) return const None();
-          state = nextItem;
+          state = nextState;
         } else {
           state = _processFuture as OffsetIteratorState<T>;
         }
@@ -146,32 +146,36 @@ class OffsetIterator<T> {
         _processFuture = null;
       }
 
-      buffer = Queue.from(state!.chunk);
-
       if (state!.hasMore == false) {
         cancel();
       }
-    }
 
-    // Emit next item
-    if (buffer.isNotEmpty) {
-      final item = buffer.removeFirst();
-
-      if (retention != 0 && _value != null) {
-        log.add(_value!);
-
-        while (retention > -1 && log.length > retention) {
-          log.removeFirst();
-        }
+      final chunkLength = state!.chunk.length;
+      if (chunkLength == 0) {
+        return const None();
+      } else if (chunkLength == 1){
+        return _nextItem(state!.chunk.first);
       }
 
-      _value = item;
-      _offset = _offset + 1;
-
-      return Some(tuple2(item, _offset));
+      buffer.addAll(state!.chunk);
     }
 
-    return const None();
+    return _nextItem(buffer.removeFirst());
+  }
+
+  Option<OffsetIteratorItem<T>> _nextItem(T item) {
+    if (retention != 0 && _value != null) {
+      log.add(_value!);
+
+      while (retention > -1 && log.length > retention) {
+        log.removeFirst();
+      }
+    }
+
+    _value = item;
+    _offset = _offset + 1;
+
+    return Some(tuple2(item, _offset));
   }
 
   /// Prevents any new items from being added to the buffer, and
@@ -185,7 +189,7 @@ class OffsetIterator<T> {
 
     state = OffsetIteratorState(
       acc: state!.acc,
-      chunk: [],
+      chunk: state!.chunk,
       hasMore: false,
     );
   }
