@@ -15,8 +15,6 @@ class OffsetIteratorState<T> {
   final bool hasMore;
 }
 
-typedef OffsetIteratorItem<T> = Tuple2<T, int>;
-
 typedef InitCallback = FutureOr<dynamic> Function();
 typedef ProcessCallback<T> = FutureOr<OffsetIteratorState<T>> Function(dynamic);
 typedef CleanupCallback = void Function(dynamic);
@@ -84,7 +82,7 @@ class OffsetIterator<T> {
 
   /// Pull the next item. If `currentOffset` is not provided, it will use the
   /// latest head offset.
-  Future<Option<OffsetIteratorItem<T>>> pull([int? currentOffset]) async {
+  Future<Option<T>> pull([int? currentOffset]) async {
     final offset = currentOffset ?? _offset;
     if (offset < 0 || offset > _offset) {
       throw new RangeError.range(offset, 0, _offset, 'currentOffset');
@@ -110,7 +108,7 @@ class OffsetIterator<T> {
     // Handle offset requests for previous items
     if (offset < _offset) {
       if (retention == 0 || offset == _offset - 1 || log.isEmpty) {
-        return value.map((v) => tuple2(v, _offset));
+        return value;
       }
 
       final reverseIndex = _offset - offset - 1;
@@ -119,7 +117,7 @@ class OffsetIterator<T> {
       if (reverseIndex > logLength) return const None();
 
       final index = logLength - reverseIndex;
-      return some(tuple2(log.elementAt(index), offset + 1));
+      return Some(log.elementAt(index));
     }
 
     // Maybe fetch next chunk and re-fill buffer
@@ -153,7 +151,7 @@ class OffsetIterator<T> {
 
       final chunkLength = state!.chunk.length;
       if (chunkLength == 0) {
-        return const None();
+        return pull(offset);
       } else if (chunkLength == 1){
         return _nextItem(state!.chunk.first);
       }
@@ -164,7 +162,7 @@ class OffsetIterator<T> {
     return _nextItem(buffer.removeFirst());
   }
 
-  Option<OffsetIteratorItem<T>> _nextItem(T item) {
+  Option<T> _nextItem(T item) {
     if (retention != 0 && _value != null) {
       log.add(_value!);
 
@@ -176,7 +174,7 @@ class OffsetIterator<T> {
     _value = item;
     _offset = _offset + 1;
 
-    return Some(tuple2(item, _offset));
+    return Some(item);
   }
 
   /// Prevents any new items from being added to the buffer, and

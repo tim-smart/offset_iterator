@@ -10,27 +10,28 @@ extension TransformExtension<T> on OffsetIterator<T> {
     bool Function(T)? hasMore,
     R? seed,
     int retention = 0,
+    int? startOffset,
   }) {
     final parent = this;
 
     return OffsetIterator(
-      init: () => offset,
+      init: () => startOffset ?? parent.offset,
       process: (offset) async {
+        final newOffset = offset + 1;
         final item = await parent.pull(offset);
 
         return item.match(
-          (item) async {
-            final newOffset = offset + 1;
-            final more = hasMore != null ? hasMore(item.first) : true;
+          (item) {
+            final more = hasMore != null ? hasMore(item) : true;
 
-            var chunk = <R>[];
-            if (more) {
-              final result = pred(item.first);
-              if (result is Future) {
-                chunk = await result;
-              } else {
-                chunk = result;
-              }
+            final chunk = more ? pred(item) : <R>[];
+
+            if (chunk is Future) {
+              return (chunk as Future<List<R>>).then((chunk) => OffsetIteratorState(
+              acc: newOffset,
+              chunk: chunk,
+              hasMore: more && parent.hasMore(newOffset),
+              ));
             }
 
             return OffsetIteratorState(
@@ -40,9 +41,9 @@ extension TransformExtension<T> on OffsetIterator<T> {
             );
           },
           () => OffsetIteratorState(
-            acc: offset,
+            acc: newOffset,
             chunk: [],
-            hasMore: parent.hasMore(offset),
+            hasMore: parent.hasMore(newOffset),
           ),
         );
       },
@@ -177,28 +178,28 @@ extension AccumulateExtension<T> on OffsetIterator<IList<T>> {
 
 extension HandleErrorExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> handleError(
-    List<T> Function(dynamic, StackTrace) onError,
+    FutureOr<List<T>?> Function(dynamic, StackTrace) onError,
   ) {
     final parent = this;
 
     return OffsetIterator(
       init: () => parent.offset,
       process: (offset) async {
-        List<T> chunk;
+        List<T>? chunk;
         int newOffset = offset;
 
         try {
           final item = await parent.pull(offset);
-          newOffset = item.map((v) => v.second).getOrElse(() => offset);
-          chunk = item.match((v) => [v.first], () => []);
+          newOffset = offset + 1;
+          chunk = item.match((v) => [v], () => []);
         } catch (err, stack) {
-          chunk = onError(err, stack);
+          chunk = await onError(err, stack);
         }
 
         return OffsetIteratorState(
           acc: newOffset,
-          chunk: chunk,
-          hasMore: parent.hasMore(newOffset),
+          chunk: chunk ?? [],
+          hasMore: chunk == null ? false : parent.hasMore(newOffset),
         );
       },
     );
@@ -214,13 +215,10 @@ extension FoldExtension<T> on OffsetIterator<T> {
     var acc = initialValue;
     var offset = startOffset ?? this.offset;
 
-    while (true) {
+    while (hasMore(offset)) {
       final result = await pull(offset);
-      if (result.isNone()) break;
-
-      final resultSome = result as Some<OffsetIteratorItem<T>>;
-      acc = reducer(acc, resultSome.value.first);
-      offset = resultSome.value.second;
+      acc = result.map((v) => reducer(acc, v)).getOrElse(() => acc);
+      offset = offset + 1;
     }
 
     return acc;

@@ -88,10 +88,10 @@ void main() {
         'brown',
         'fox',
       ]);
-      expect(await i.pull(), some(tuple2('the', 1)));
-      expect(await i.pull(), some(tuple2('quick', 2)));
-      expect(await i.pull(), some(tuple2('brown', 3)));
-      expect(await i.pull(), some(tuple2('fox', 4)));
+      expect(await i.pull(), some('the'));
+      expect(await i.pull(), some('quick'));
+      expect(await i.pull(), some('brown'));
+      expect(await i.pull(), some('fox'));
       expect(await i.pull(), none());
     });
 
@@ -104,14 +104,14 @@ void main() {
         'brown',
         'fox',
       ], retention: -1);
-      expect(await i.pull(), some(tuple2('the', 1)));
-      expect(await i.pull(), some(tuple2('quick', 2)));
-      expect(await i.pull(), some(tuple2('brown', 3)));
-      expect(await i.pull(), some(tuple2('fox', 4)));
+      expect(await i.pull(), some('the'));
+      expect(await i.pull(), some('quick'));
+      expect(await i.pull(), some('brown'));
+      expect(await i.pull(), some('fox'));
       expect(await i.pull(), none());
 
-      expect(await i.pull(3), some(tuple2('fox', 4)));
-      expect(await i.pull(0), some(tuple2('the', 1)));
+      expect(await i.pull(3), some('fox'));
+      expect(await i.pull(0), some('the'));
 
       // If offset is out of range, it returns none
       await expectLater(i.pull(-1), throwsRangeError);
