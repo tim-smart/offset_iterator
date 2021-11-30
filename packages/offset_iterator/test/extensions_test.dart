@@ -30,16 +30,18 @@ void main() {
       expect(await i.toList(), equals([1, 101, 1001, 2, 102, 1002]));
     });
 
-    test('hasMore allows transform to exit early', () async {
+    test('returning null allows transform to exit early', () async {
       final i =
           OffsetIterator.fromIterable([1, 2, 3, 4, 5]).transform((i) async {
+        if (i >= 3) return null;
+
         await Future.delayed(const Duration(microseconds: 10));
         return [
           i,
           i + 100,
           i + 1000,
         ];
-      }, hasMore: (i) => i < 3);
+      });
 
       expect(await i.toList(), equals([1, 101, 1001, 2, 102, 1002]));
     });

@@ -7,8 +7,7 @@ import 'package:offset_iterator/offset_iterator.dart';
 
 extension TransformExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> transform<R>(
-    FutureOr<List<R>> Function(T) pred, {
-    bool Function(T)? hasMore,
+    FutureOr<List<R>?> Function(T) pred, {
     R? seed,
     int? retention,
     int? startOffset,
@@ -23,23 +22,21 @@ extension TransformExtension<T> on OffsetIterator<T> {
 
         return item.match(
           (item) {
-            final more = hasMore != null ? hasMore(item) : true;
-
-            final chunk = more ? pred(item) : <R>[];
+            final chunk = pred(item);
 
             if (chunk is Future) {
-              return (chunk as Future<List<R>>)
+              return (chunk as Future<List<R>?>)
                   .then((chunk) => OffsetIteratorState(
                         acc: newOffset,
-                        chunk: chunk,
-                        hasMore: more && parent.hasMore(newOffset),
+                        chunk: chunk ?? [],
+                        hasMore: chunk != null && parent.hasMore(newOffset),
                       ));
             }
 
             return OffsetIteratorState(
               acc: newOffset,
-              chunk: chunk,
-              hasMore: more && parent.hasMore(newOffset),
+              chunk: chunk ?? [],
+              hasMore: chunk != null && parent.hasMore(newOffset),
             );
           },
           () => OffsetIteratorState(
@@ -151,11 +148,10 @@ extension TakeWhileExtension<T> on OffsetIterator<T> {
     T? prev = seed ?? valueOrNull;
 
     return transform(
-      (item) => [item],
-      hasMore: (item) {
+      (item) {
         final more = predicate(item, prev);
         prev = item;
-        return more;
+        return more ? [item] : null;
       },
       seed: prev,
       retention: retention,
@@ -305,14 +301,14 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
 
 extension TransformConcurrentExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> transformConcurrent<R>(
-    FutureOr<List<R>> Function(T item) predicate, {
+    FutureOr<List<R>?> Function(T item) predicate, {
     required int concurrency,
     R? seed,
     int? retention,
     int? startOffset,
   }) {
     final parent = this;
-    final queue = Queue<FutureOr<List<R>>>();
+    final queue = Queue<FutureOr<List<R>?>>();
 
     Future<int> fillQueue(int offset) async {
       while (queue.length < concurrency && parent.hasMore(offset)) {
@@ -340,8 +336,8 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
 
         return OffsetIteratorState(
           acc: offset,
-          chunk: chunk,
-          hasMore: queue.isNotEmpty,
+          chunk: chunk ?? [],
+          hasMore: chunk != null && queue.isNotEmpty,
         );
       },
       seed: seed,
