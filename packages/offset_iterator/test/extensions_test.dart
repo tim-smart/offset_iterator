@@ -87,12 +87,12 @@ void main() {
       final i = OffsetIterator.fromIterable([1, 2, 3])
           .scan<int>(0, (acc, i) => acc + i);
 
-      expect(i.value, some(0));
-      expect(i.offset, 1);
+      expect(i.value, none());
+      expect(i.offset, 0);
       expect(await i.toList(), equals([1, 3, 6]));
     });
 
-    test('allows the seed to be manually set', () async {
+    test('allows the seed to be set', () async {
       final i = OffsetIterator.fromIterable([1, 2, 3])
           .scan<int>(0, (acc, i) => acc + i, seed: -1);
 
@@ -176,7 +176,7 @@ void main() {
         IList(const [7, 8, 9]),
       ]).accumulate();
 
-      expect(i.value, some(IList()));
+      expect(i.value, none());
       expect(
         await i.toList(),
         equals([

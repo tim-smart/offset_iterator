@@ -94,7 +94,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
         acc = reducer(acc, item);
         return [acc];
       },
-      seed: seed ?? initialValue,
+      seed: seed,
       retention: retention,
     );
   }
