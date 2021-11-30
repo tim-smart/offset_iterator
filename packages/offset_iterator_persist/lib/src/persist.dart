@@ -62,9 +62,11 @@ extension PersistExtension<T> on OffsetIterator<T> {
 
     return tap(
       (item) {
-        if (prev != null && equals != null && equals(prev!, item)) return;
-        write(item);
-        prev = item;
+        Future.microtask(() {
+          if (prev != null && equals != null && equals(prev!, item)) return;
+          write(item);
+          prev = item;
+        });
       },
       seed: seed.toNullable(),
     );
