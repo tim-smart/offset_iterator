@@ -85,6 +85,11 @@ class OffsetIterator<T> {
   /// Pull the next item. If `currentOffset` is not provided, it will use the
   /// latest head offset.
   Future<Option<OffsetIteratorItem<T>>> pull([int? currentOffset]) async {
+    final offset = currentOffset ?? _offset;
+    if (offset < 0 || offset > _offset) {
+      throw new RangeError.range(offset, 0, _offset, 'currentOffset');
+    }
+
     if (state == null) {
       final initResult = _init();
       dynamic acc;
@@ -102,8 +107,6 @@ class OffsetIterator<T> {
       );
     }
 
-    final offset = currentOffset ?? _offset;
-
     // Handle offset requests for previous items
     if (offset < _offset) {
       if (retention == 0 || offset == _offset - 1 || log.isEmpty) {
@@ -117,8 +120,6 @@ class OffsetIterator<T> {
 
       final index = logLength - reverseIndex;
       return some(tuple2(log.elementAt(index), offset + 1));
-    } else if (offset > _offset) {
-      return const None();
     }
 
     // Maybe fetch next chunk and re-fill buffer

@@ -114,8 +114,8 @@ void main() {
       expect(await i.pull(0), some(tuple2('the', 1)));
 
       // If offset is out of range, it returns none
-      expect(await i.pull(-1), none());
-      expect(await i.pull(5), none());
+      await expectLater(i.pull(-1), throwsRangeError);
+      await expectLater(i.pull(5), throwsRangeError);
     });
   });
 
@@ -146,7 +146,7 @@ void main() {
         Stream.fromIterable([1, 2, 3, 4, 5]),
         retention: -1,
       );
-      expect(await i.toList(startOffset: 3), equals([]));
+      expect(i.toList(startOffset: 3), throwsRangeError);
     });
   });
 
