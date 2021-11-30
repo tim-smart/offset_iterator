@@ -113,12 +113,12 @@ class OffsetIterator<T> {
       final reverseIndex = _offset - offset - 1;
       final logLength = log.length;
 
-      if (reverseIndex > logLength) {
-        return some(tuple2(log.first, _offset - logLength));
-      }
+      if (reverseIndex > logLength) return const None();
 
       final index = logLength - reverseIndex;
       return some(tuple2(log.elementAt(index), offset + 1));
+    } else if (offset > _offset) {
+      return const None();
     }
 
     // Maybe fetch next chunk and re-fill buffer

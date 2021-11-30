@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 
 extension TransformExtension<T> on OffsetIterator<T> {
@@ -202,4 +203,43 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
       },
     );
   }
+}
+
+extension FoldExtension<T> on OffsetIterator<T> {
+  Future<R> fold<R>(
+    R initialValue,
+    R Function(R acc, T item) reducer, {
+    int? startOffset,
+  }) async {
+    var acc = initialValue;
+    var offset = startOffset ?? this.offset;
+
+    while (true) {
+      final result = await pull(offset);
+      if (result.isNone()) break;
+
+      final resultSome = result as Some<OffsetIteratorItem<T>>;
+      acc = reducer(acc, resultSome.value.first);
+      offset = resultSome.value.second;
+    }
+
+    return acc;
+  }
+}
+
+extension ToIListExtension<T> on OffsetIterator<T> {
+  Future<IList<T>> toIList({
+    int? startOffset,
+  }) =>
+      fold(IList(), (acc, item) => acc.add(item), startOffset: startOffset);
+}
+
+extension ToListExtension<T> on OffsetIterator<T> {
+  Future<List<T>> toList({
+    int? startOffset,
+  }) =>
+      fold([], (acc, item) {
+        acc.add(item);
+        return acc;
+      }, startOffset: startOffset);
 }
