@@ -65,11 +65,44 @@ void main() {
 
   group('map', () {
     test('transforms the items including the seed', () async {
-      final i = OffsetIterator.fromIterable([2, 3], seed: () => 1).map((i) => i * 2);
+      final i =
+          OffsetIterator.fromIterable([2, 3], seed: () => 1).map((i) => i * 2);
 
       expect(i.value, some(2));
       expect(i.offset, 1);
       expect(await i.toList(), equals([4, 6]));
+    });
+
+    test('startOffset allows replay', () async {
+      final i = OffsetIterator.fromIterable(
+        [2, 3],
+        seed: () => 1,
+        retention: -1,
+      );
+      await i.run();
+      expect(i.log.toList(), [1, 2]);
+
+      final mapped = i.map((i) => i * 2, startOffset: 1);
+
+      expect(mapped.value, some(2));
+      expect(mapped.offset, 1);
+      expect(await mapped.toList(), equals([4, 6]));
+    });
+
+    test('startOffset from 0', () async {
+      final i = OffsetIterator.fromIterable(
+        [2, 3],
+        seed: () => 1,
+        retention: -1,
+      );
+      await i.run();
+      expect(i.log.toList(), [1, 2]);
+
+      final mapped = i.map((i) => i * 2, startOffset: 0);
+
+      expect(mapped.value, none());
+      expect(mapped.offset, 0);
+      expect(await mapped.toList(), equals([2, 4, 6]));
     });
   });
 
@@ -134,8 +167,8 @@ void main() {
 
   group('distinct', () {
     test('removes sequential duplicates', () async {
-      final i =
-          OffsetIterator.fromIterable([1, 1, 2, 2, 3, 3], seed: () => 1).distinct();
+      final i = OffsetIterator.fromIterable([1, 1, 2, 2, 3, 3], seed: () => 1)
+          .distinct();
 
       expect(i.value, some(1));
 

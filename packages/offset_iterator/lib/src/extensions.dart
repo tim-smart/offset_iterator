@@ -71,10 +71,10 @@ extension MapExtension<T> on OffsetIterator<T> {
     int? retention,
     int? startOffset,
   }) {
-    final seed = generateSeed(startOffset: startOffset)!;
+    final seed = generateSeed(startOffset: startOffset);
     return transform(
       (item) => [pred(item)],
-      seed: () => optionOf(seed()).map(pred).toNullable(),
+      seed: () => optionOf(seed?.call()).map(pred).toNullable(),
       retention: retention,
       startOffset: startOffset,
     );
