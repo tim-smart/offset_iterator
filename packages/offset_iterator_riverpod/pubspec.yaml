@@ -1,0 +1,15 @@
+name: offset_iterator_riverpod
+description: Helper functions for creating RiverPod providers for OffsetIterator's.
+version: 0.0.1
+homepage: https://github.com/tim-smart/offset_iterator
+
+environment:
+  sdk: ">=2.12.0 <3.0.0"
+
+dependencies:
+  fpdart: ^0.0.12
+  offset_iterator: ^0.0.17
+  riverpod: ^1.0.1
+
+dev_dependencies:
+  flutter_lints: ^1.0.0
