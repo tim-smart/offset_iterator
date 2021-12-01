@@ -100,6 +100,11 @@ void main() {
       final i = OffsetIterator.range(0, end: 5);
       expect(await i.toList(), equals([0, 1, 2, 3, 4, 5]));
     });
+
+    test('it emits nothing if end if smaller than start', () async {
+      final i = OffsetIterator.range(1, end: 0);
+      expect(await i.toList(), equals([]));
+    });
   });
 
   group('.pull', () {

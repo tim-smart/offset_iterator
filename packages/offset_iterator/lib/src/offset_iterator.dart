@@ -341,7 +341,7 @@ class OffsetIterator<T> {
         init: () => start,
         process: (current) => OffsetIteratorState(
           acc: current + 1,
-          chunk: [current],
+          chunk: current > end ? [] : [current],
           hasMore: end != null ? current < end : true,
         ),
         seed: seed,
