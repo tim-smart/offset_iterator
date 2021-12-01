@@ -181,4 +181,12 @@ void main() {
       expect(await i.toList(startOffset: 0), equals([1, 2]));
     });
   });
+
+  group('.valueStream', () {
+    test('it emits the latest values', () async {
+      final i = OffsetIterator.fromIterable([1, 2, 3, 4, 5]);
+      expect(i.valueStream, emitsInOrder([1, 2, 3, 4, 5]));
+      expect(await i.toList(), equals([1, 2, 3, 4, 5]));
+    });
+  });
 }

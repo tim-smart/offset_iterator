@@ -50,6 +50,10 @@ class OffsetIterator<T> {
   /// Get the current head value as an option.
   Option<T> get value => optionOf(_value);
 
+  /// A stream of the current head value.
+  Stream<T> get valueStream => _valueController.stream;
+  final StreamController<T> _valueController = StreamController.broadcast();
+
   /// How many items to retain in the log.
   /// If set to a negative number (e.g. -1), it will retain everything.
   /// Defaults to 0 (retains nothing).
@@ -123,6 +127,7 @@ class OffsetIterator<T> {
     // Maybe fetch next chunk and re-fill buffer
     if (buffer.isEmpty) {
       if (!state!.hasMore) {
+        _maybeCloseValueController();
         return const None();
       }
 
@@ -174,6 +179,9 @@ class OffsetIterator<T> {
     _value = item;
     _offset = _offset + 1;
 
+    _valueController.add(item);
+    if (!hasMore()) _maybeCloseValueController();
+
     return Some(item);
   }
 
@@ -191,6 +199,11 @@ class OffsetIterator<T> {
       chunk: state!.chunk,
       hasMore: false,
     );
+  }
+
+  void _maybeCloseValueController() {
+    if (_valueController.isClosed) return;
+    _valueController.close();
   }
 
   /// Create an `OffsetIterator` from the provided `Stream`.
