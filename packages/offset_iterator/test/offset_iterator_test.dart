@@ -88,6 +88,13 @@ void main() {
     });
   });
 
+  group('OffsetIterator.fromFuture', () {
+    test('it resolves the future', () async {
+      final i = OffsetIterator.fromFuture(() async => 'hello');
+      expect(await i.toList(), equals(['hello']));
+    });
+  });
+
   group('.pull', () {
     test('responds with the next item', () async {
       final i = OffsetIterator.fromIterable([

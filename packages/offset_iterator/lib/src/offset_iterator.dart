@@ -248,4 +248,18 @@ class OffsetIterator<T> {
 
   static OffsetIterator<T> fromValue<T>(T value, {T? seed}) =>
       fromIterable([value], seed: seed);
+
+  static OffsetIterator<T> fromFuture<T>(
+    Future<T> Function() future, {
+    T? seed,
+  }) =>
+      OffsetIterator(
+        init: () {},
+        process: (_) async => OffsetIteratorState(
+          acc: null,
+          chunk: [await future()],
+          hasMore: false,
+        ),
+        seed: seed,
+      );
 }
