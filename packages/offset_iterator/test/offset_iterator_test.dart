@@ -293,8 +293,13 @@ void main() {
       i.earliestAvailableOffset = 0;
       expect(i.earliestAvailableOffset, 1);
 
-      i.earliestAvailableOffset = 6;
+      i.earliestAvailableOffset = 7;
       expect(i.earliestAvailableOffset, 1);
+      expect(i.log.toList(), [0, 1, 2, 3, 4]);
+
+      i.earliestAvailableOffset = 6;
+      expect(i.earliestAvailableOffset, 6);
+      expect(i.log.isEmpty, true);
     });
   });
 }

@@ -136,7 +136,7 @@ class OffsetIterator<T> {
     }
 
     // Handle offset requests for previous items
-    if (offset < _offset) return _valueAt(offset);
+    if (offset < _offset) return _valueAt(offset + 1);
 
     // Maybe fetch next chunk and re-fill buffer
     if (buffer.isEmpty) {
@@ -200,11 +200,11 @@ class OffsetIterator<T> {
   }
 
   Option<T> _valueAt(int offset) {
-    if (offset == _offset - 1) {
+    if (offset == _offset) {
       return value;
     }
 
-    final reverseIndex = _offset - offset - 1;
+    final reverseIndex = _offset - offset;
     final logLength = log.length;
 
     if (reverseIndex > logLength) return const None();
@@ -255,7 +255,7 @@ class OffsetIterator<T> {
   }
 
   set earliestAvailableOffset(int offset) {
-    if (offset >= this.offset || offset < 2) return;
+    if (offset > this.offset || offset < 2) return;
 
     final targetLogLength = _offset - offset;
     while (targetLogLength < log.length) {
