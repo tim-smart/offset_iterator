@@ -18,18 +18,19 @@ class OffsetIteratorState<T> {
 typedef InitCallback = FutureOr<dynamic> Function();
 typedef ProcessCallback<T> = FutureOr<OffsetIteratorState<T>> Function(dynamic);
 typedef CleanupCallback = void Function(dynamic);
+typedef SeedCallback<T> = T? Function();
 
 class OffsetIterator<T> {
   OffsetIterator({
     required InitCallback init,
     required ProcessCallback<T> process,
     CleanupCallback? cleanup,
-    T? seed,
+    SeedCallback? seed,
     this.retention = 0,
   })  : _init = init,
         _process = process,
         _cleanup = cleanup,
-        _value = seed {
+        _seed = seed {
     _offset = value.match((_) => 1, () => 0);
     value.filter((_) => retention > 0).map(log.add);
   }
@@ -38,17 +39,23 @@ class OffsetIterator<T> {
   final ProcessCallback<T> _process;
   FutureOr<OffsetIteratorState<T>>? _processFuture;
   final CleanupCallback? _cleanup;
+  final SeedCallback? _seed;
 
   /// The latest state from the `process` function.
   OffsetIteratorState<T>? state;
   var _cancelled = false;
 
   /// Get the current head value, or `null`.
-  T? get valueOrNull => _value;
+  T? get valueOrNull {
+    if (_value != null) return _value;
+    if (_seed == null) return null;
+
+    return _value = _seed!();
+  }
   T? _value;
 
   /// Get the current head value as an option.
-  Option<T> get value => optionOf(_value);
+  Option<T> get value => optionOf(valueOrNull);
 
   /// A stream of the current head value.
   Stream<T> get valueStream => _valueController.stream;
@@ -93,6 +100,7 @@ class OffsetIterator<T> {
     }
 
     if (state == null) {
+      valueOrNull; // Populate seed
       final initResult = _init();
       dynamic acc;
 
@@ -212,7 +220,7 @@ class OffsetIterator<T> {
   static OffsetIterator<T> fromStream<T>(
     Stream<T> stream, {
     int retention = 0,
-    T? seed,
+    SeedCallback<T>? seed,
   }) {
     final valueStreamSeed =
         Option.tryCatch(() => (stream as dynamic).valueOrNull as T?);
@@ -235,9 +243,7 @@ class OffsetIterator<T> {
         );
       },
       cleanup: (i) => (i as StreamIterator<T>).cancel(),
-      seed: optionOf(seed)
-          .alt(() => valueStreamSeed.flatMap(optionOf))
-          .toNullable(),
+      seed: seed ?? () => valueStreamSeed.toNullable(),
       retention: retention,
     );
   }
@@ -246,7 +252,7 @@ class OffsetIterator<T> {
   static OffsetIterator<T> fromIterable<T>(
     Iterable<T> iterable, {
     int retention = 0,
-    T? seed,
+    SeedCallback<T>? seed,
   }) =>
       OffsetIterator(
         init: () {},
@@ -259,12 +265,12 @@ class OffsetIterator<T> {
         retention: retention,
       );
 
-  static OffsetIterator<T> fromValue<T>(T value, {T? seed}) =>
+  static OffsetIterator<T> fromValue<T>(T value, {SeedCallback<T>? seed}) =>
       fromIterable([value], seed: seed);
 
   static OffsetIterator<T> fromFuture<T>(
     Future<T> Function() future, {
-    T? seed,
+    SeedCallback<T>? seed,
   }) =>
       OffsetIterator(
         init: () {},

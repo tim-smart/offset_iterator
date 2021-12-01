@@ -60,7 +60,7 @@ extension PersistExtension<T> on OffsetIterator<T> {
     key = 'OffsetIterator_$key';
     final seed = _readCache(storage, cache, key, fromJson);
     final write = _writeCache(storage, cache, key, toJson);
-    T? prev = seed.toNullable() ?? fallbackSeed;
+    T? prev = seed.toNullable() ?? fallbackSeed ?? valueOrNull;
 
     return tap(
       (item) {
