@@ -68,8 +68,12 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   }
 
   void _subscribe() {
-    _offset = iterator.offset;
-    iterator.value.map((v) => _handleData(some(v)));
+    _offset = widget.startOffset ?? iterator.offset;
+    if (_offset < iterator.earliestAvailableOffset) {
+      _offset = iterator.earliestAvailableOffset;
+    }
+
+    iterator.valueAt(_offset).map((v) => _handleData(some(v)));
     _initialDemand(widget.initialDemand);
   }
 
@@ -80,6 +84,10 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
 
   Future<void> _demand() {
     if (iterator.isLastOffset(_offset)) return Future.sync(() {});
+
+    if (_offset < iterator.earliestAvailableOffset) {
+      _offset = iterator.earliestAvailableOffset;
+    }
 
     return iterator.pull(_offset).then((item) {
       _offset = _offset + 1;
