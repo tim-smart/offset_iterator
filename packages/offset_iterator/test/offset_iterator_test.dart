@@ -270,4 +270,31 @@ void main() {
       expect(i.status, OffsetIteratorStatus.completed);
     });
   });
+
+  group('set .earliestAvailableOffset', () {
+    test('trims the log', () async {
+      final i = OffsetIterator.range(0, end: 5, retention: -1);
+      await i.toList();
+
+      expect(i.earliestAvailableOffset, 1);
+      i.earliestAvailableOffset = 3;
+      expect(i.earliestAvailableOffset, 3);
+    });
+
+    test('does nothing if out of bounds', () async {
+      final i = OffsetIterator.range(0, end: 5, retention: -1);
+      await i.toList();
+
+      expect(i.earliestAvailableOffset, 1);
+
+      i.earliestAvailableOffset = 1;
+      expect(i.earliestAvailableOffset, 1);
+
+      i.earliestAvailableOffset = 0;
+      expect(i.earliestAvailableOffset, 1);
+
+      i.earliestAvailableOffset = 6;
+      expect(i.earliestAvailableOffset, 1);
+    });
+  });
 }

@@ -254,6 +254,15 @@ class OffsetIterator<T> {
     return () => valueOrNull ?? fallback?.call();
   }
 
+  set earliestAvailableOffset(int offset) {
+    if (offset >= this.offset || offset < 2) return;
+
+    final targetLogLength = _offset - offset;
+    while (targetLogLength < log.length) {
+      log.removeFirst();
+    }
+  }
+
   /// Create an `OffsetIterator` from the provided `Stream`.
   /// If a `ValueStream` with a seed is given, it will populate the iterator's
   /// seed value.
@@ -336,5 +345,6 @@ class OffsetIterator<T> {
           hasMore: end != null ? current < end : true,
         ),
         seed: seed,
+        retention: retention,
       );
 }
