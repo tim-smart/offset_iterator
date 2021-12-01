@@ -252,12 +252,13 @@ void main() {
   group('flatMap', () {
     test('flattens the inner OffsetIterators', () async {
       final i = OffsetIterator.fromIterable([1, 2]).flatMap(
-          (i) => OffsetIterator.fromIterable([
-                i,
-                i + 100,
-                i + 1000,
-              ]),
-          seed: 0);
+        (i) => OffsetIterator.fromIterable([
+          i,
+          i + 100,
+          i + 1000,
+        ]),
+        seed: 0,
+      );
 
       expect(i.value, some(0));
       expect(i.offset, 1);

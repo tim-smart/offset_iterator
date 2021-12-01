@@ -156,7 +156,7 @@ void main() {
         Stream.fromIterable([1, 2, 3, 4, 5]),
         retention: -1,
       );
-      expect(i.toList(startOffset: 3), throwsRangeError);
+      await expectLater(i.toList(startOffset: 3), throwsRangeError);
     });
   });
 

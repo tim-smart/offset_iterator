@@ -11,7 +11,18 @@ extension TransformExtension<T> on OffsetIterator<T> {
     R? seed,
     int? retention,
     int? startOffset,
+    int concurrency = 1,
   }) {
+    if (concurrency > 1) {
+      return transformConcurrent(
+        pred,
+        concurrency: concurrency,
+        seed: seed,
+        retention: retention,
+        startOffset: startOffset,
+      );
+    }
+
     final parent = this;
 
     return OffsetIterator(
@@ -20,30 +31,14 @@ extension TransformExtension<T> on OffsetIterator<T> {
         final item = await parent.pull(offset);
         final newOffset = offset + 1;
 
-        return item.match(
-          (item) {
-            final chunk = pred(item);
+        final chunkFuture = item.map(pred).toNullable();
+        final chunk = chunkFuture is Future ? await chunkFuture : chunkFuture;
+        final hasMore = item.isSome() && chunk != null;
 
-            if (chunk is Future) {
-              return (chunk as Future<List<R>?>)
-                  .then((chunk) => OffsetIteratorState(
-                        acc: newOffset,
-                        chunk: chunk ?? [],
-                        hasMore: chunk != null && parent.hasMore(newOffset),
-                      ));
-            }
-
-            return OffsetIteratorState(
-              acc: newOffset,
-              chunk: chunk ?? [],
-              hasMore: chunk != null && parent.hasMore(newOffset),
-            );
-          },
-          () => OffsetIteratorState(
-            acc: newOffset,
-            chunk: [],
-            hasMore: parent.hasMore(newOffset),
-          ),
+        return OffsetIteratorState(
+          acc: newOffset,
+          chunk: chunk ?? [],
+          hasMore: hasMore && parent.hasMore(newOffset),
         );
       },
       seed: seed,
