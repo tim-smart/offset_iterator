@@ -9,12 +9,15 @@ OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
   int initialDemand = 1,
 }) =>
     (iterator) {
-      final sub = Stream.fromIterable(Iterable<int>.generate(initialDemand))
-          .asyncMap((_) => iterator.pull())
-          .listen((_) {});
+      final initial =
+          OffsetIterator.range(1, end: initialDemand).asyncMap((_) async {
+        await iterator.pull();
+      });
 
       ref.onDispose(iterator.cancel);
-      ref.onDispose(sub.cancel);
+      ref.onDispose(initial.cancel);
+
+      initial.run();
 
       return iterator;
     };
@@ -22,11 +25,9 @@ OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
 Option<T> Function(
   OffsetIterator<T> iterator,
 ) iteratorValueProvider<T>(ProviderRef<Option<T>> ref) => (iterator) {
-      final sub = iterator.valueStream.listen((s) {
+      ref.onDispose(iterator.valueStream.listen((s) {
         ref.state = Some(s);
-      });
-
-      ref.onDispose(sub.cancel);
+      }).cancel);
 
       return iterator.value;
     };
@@ -34,11 +35,11 @@ Option<T> Function(
 bool Function(
   OffsetIterator<T> iterator,
 ) iteratorHasMoreProvider<T>(ProviderRef<bool> ref) => (iterator) {
-      final sub = iterator.valueStream.listen((_) {}, onDone: () {
-        ref.state = false;
-      });
+      if (!iterator.hasMore()) return false;
 
-      ref.onDispose(sub.cancel);
+      ref.onDispose(iterator.valueStream.listen((_) {}, onDone: () {
+        ref.state = false;
+      }).cancel);
 
       return true;
     };
