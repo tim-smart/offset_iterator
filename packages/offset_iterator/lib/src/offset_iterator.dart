@@ -20,6 +20,13 @@ typedef ProcessCallback<T> = FutureOr<OffsetIteratorState<T>> Function(dynamic);
 typedef CleanupCallback = void Function(dynamic);
 typedef SeedCallback<T> = T? Function();
 
+enum OffsetIteratorStatus {
+  unseeded,
+  seeded,
+  active,
+  completed
+}
+
 class OffsetIterator<T> {
   OffsetIterator({
     required InitCallback init,
@@ -30,10 +37,7 @@ class OffsetIterator<T> {
   })  : _init = init,
         _process = process,
         _cleanup = cleanup,
-        _seed = seed {
-    _offset = value.match((_) => 1, () => 0);
-    value.filter((_) => retention > 0).map(log.add);
-  }
+        _seed = seed;
 
   final InitCallback _init;
   final ProcessCallback<T> _process;
@@ -43,14 +47,15 @@ class OffsetIterator<T> {
 
   /// The latest state from the `process` function.
   OffsetIteratorState<T>? state;
-  var _cancelled = false;
+
+  /// The internal status
+  OffsetIteratorStatus get status => _status;
+  var _status = OffsetIteratorStatus.unseeded;
 
   /// Get the current head value, or `null`.
   T? get valueOrNull {
-    if (_value != null) return _value;
-    if (_seed == null) return null;
-
-    return _value = _seed!();
+    _maybeSeedValue();
+    return _value;
   }
   T? _value;
 
@@ -67,7 +72,10 @@ class OffsetIterator<T> {
   final int retention;
 
   /// The current head offset.
-  int get offset => _offset;
+  int get offset {
+    _maybeSeedValue();
+    return _offset;
+  }
   var _offset = 0;
 
   /// The buffer contains items that have yet to be pulled.
@@ -90,6 +98,15 @@ class OffsetIterator<T> {
 
   /// Checks if the specified offset is the last item.
   bool isLastOffset(int offset) => !hasMore(offset);
+  
+  void _maybeSeedValue() {
+    if (_status != OffsetIteratorStatus.unseeded) return;
+    _value = _seed?.call();
+    if (_value != null) {
+      _offset = 1;
+    }
+    _status = OffsetIteratorStatus.seeded;
+  }
 
   /// Pull the next item. If `currentOffset` is not provided, it will use the
   /// latest head offset.
@@ -100,7 +117,7 @@ class OffsetIterator<T> {
     }
 
     if (state == null) {
-      valueOrNull; // Populate seed
+      _maybeSeedValue();
       final initResult = _init();
       dynamic acc;
 
@@ -115,6 +132,8 @@ class OffsetIterator<T> {
         chunk: [],
         hasMore: true,
       );
+
+      _status = OffsetIteratorStatus.active;
     }
 
     // Handle offset requests for previous items
@@ -195,18 +214,21 @@ class OffsetIterator<T> {
 
   /// Prevents any new items from being added to the buffer, and
   void cancel() {
-    if (_cancelled || state == null) return;
-    _cancelled = true;
+    if (_status == OffsetIteratorStatus.completed) return;
 
-    if (_cleanup != null) {
-      _cleanup!(state!.acc);
+    if (_status == OffsetIteratorStatus.active) {
+      if (_cleanup != null) {
+        _cleanup!(state!.acc);
+      }
+
+      state = OffsetIteratorState(
+        acc: state!.acc,
+        chunk: state!.chunk,
+        hasMore: false,
+      );
     }
 
-    state = OffsetIteratorState(
-      acc: state!.acc,
-      chunk: state!.chunk,
-      hasMore: false,
-    );
+    _status = OffsetIteratorStatus.completed;
   }
 
   void _maybeCloseValueController() {
