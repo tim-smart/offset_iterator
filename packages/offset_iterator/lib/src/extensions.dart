@@ -394,3 +394,11 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
     );
   }
 }
+
+extension RunExtension on OffsetIterator {
+  Future<void> run() async {
+    while (hasMore()) {
+      await pull();
+    }
+  }
+}
