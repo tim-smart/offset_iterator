@@ -24,7 +24,7 @@ enum OffsetIteratorStatus {
   unseeded,
   seeded,
   active,
-  completed
+  completed,
 }
 
 class OffsetIterator<T> {
@@ -41,7 +41,6 @@ class OffsetIterator<T> {
 
   final InitCallback _init;
   final ProcessCallback<T> _process;
-  FutureOr<OffsetIteratorState<T>>? _processFuture;
   final CleanupCallback? _cleanup;
   final SeedCallback? _seed;
 
@@ -51,13 +50,15 @@ class OffsetIterator<T> {
   /// The internal status
   OffsetIteratorStatus get status => _status;
   var _status = OffsetIteratorStatus.unseeded;
+  FutureOr<OffsetIteratorState<T>>? _processFuture;
+
+  T? _value;
 
   /// Get the current head value, or `null`.
   T? get valueOrNull {
     _maybeSeedValue();
     return _value;
   }
-  T? _value;
 
   /// Get the current head value as an option.
   Option<T> get value => optionOf(valueOrNull);
@@ -76,6 +77,10 @@ class OffsetIterator<T> {
     _maybeSeedValue();
     return _offset;
   }
+
+  /// The earliest offset that still has a value
+  int get earliestAvailableOffset => offset - log.length;
+
   var _offset = 0;
 
   /// The buffer contains items that have yet to be pulled.
@@ -98,7 +103,7 @@ class OffsetIterator<T> {
 
   /// Checks if the specified offset is the last item.
   bool isLastOffset(int offset) => !hasMore(offset);
-  
+
   void _maybeSeedValue() {
     if (_status != OffsetIteratorStatus.unseeded) return;
     _value = _seed?.call();
@@ -119,13 +124,7 @@ class OffsetIterator<T> {
     if (state == null) {
       _maybeSeedValue();
       final initResult = _init();
-      dynamic acc;
-
-      if (initResult is Future) {
-        acc = await initResult;
-      } else {
-        acc = initResult;
-      }
+      final acc = initResult is Future ? await initResult : initResult;
 
       state = OffsetIteratorState(
         acc: acc,
@@ -137,19 +136,7 @@ class OffsetIterator<T> {
     }
 
     // Handle offset requests for previous items
-    if (offset < _offset) {
-      if (offset == _offset - 1) {
-        return value;
-      }
-
-      final reverseIndex = _offset - offset - 1;
-      final logLength = log.length;
-
-      if (reverseIndex > logLength) return const None();
-
-      final index = logLength - reverseIndex;
-      return Some(log.elementAt(index));
-    }
+    if (offset < _offset) return _valueAt(offset);
 
     // Maybe fetch next chunk and re-fill buffer
     if (buffer.isEmpty) {
@@ -212,6 +199,20 @@ class OffsetIterator<T> {
     return Some(item);
   }
 
+  Option<T> _valueAt(int offset) {
+    if (offset == _offset - 1) {
+      return value;
+    }
+
+    final reverseIndex = _offset - offset - 1;
+    final logLength = log.length;
+
+    if (reverseIndex > logLength) return const None();
+
+    final index = logLength - reverseIndex;
+    return Some(log.elementAt(index));
+  }
+
   /// Prevents any new items from being added to the buffer, and
   void cancel() {
     if (_status == OffsetIteratorStatus.completed) return;
@@ -234,6 +235,23 @@ class OffsetIterator<T> {
   void _maybeCloseValueController() {
     if (_valueController.isClosed) return;
     _valueController.close();
+  }
+
+  SeedCallback<T>? generateSeed({
+    int? startOffset,
+    SeedCallback<T>? override,
+    SeedCallback<T>? fallback,
+  }) {
+    if (override != null) return override;
+
+    _maybeSeedValue();
+
+    if (startOffset != null) {
+      final value = _valueAt(startOffset).toNullable();
+      return value != null ? (() => value) : fallback;
+    }
+
+    return () => valueOrNull ?? fallback?.call();
   }
 
   /// Create an `OffsetIterator` from the provided `Stream`.
@@ -300,6 +318,22 @@ class OffsetIterator<T> {
           acc: null,
           chunk: [await future()],
           hasMore: false,
+        ),
+        seed: seed,
+      );
+
+  static OffsetIterator<int> range(
+    int start, {
+    int? end,
+    int retention = 0,
+    SeedCallback<int>? seed,
+  }) =>
+      OffsetIterator(
+        init: () => start,
+        process: (current) => OffsetIteratorState(
+          acc: current + 1,
+          chunk: [current],
+          hasMore: end != null ? current < end : true,
         ),
         seed: seed,
       );

@@ -95,6 +95,13 @@ void main() {
     });
   });
 
+  group('OffsetIterator.range', () {
+    test('it resolves the future', () async {
+      final i = OffsetIterator.range(0, end: 5);
+      expect(await i.toList(), equals([0, 1, 2, 3, 4, 5]));
+    });
+  });
+
   group('.pull', () {
     test('responds with the next item', () async {
       final i = OffsetIterator.fromIterable([
@@ -143,6 +150,7 @@ void main() {
       expect(await i.toList(), equals([1, 2, 3, 4, 5]));
       expect(i.value, equals(some(5)));
       expect(i.log.toList(), equals([2, 3, 4]));
+      expect(i.earliestAvailableOffset, equals(2));
 
       expect(await i.toList(startOffset: 0), equals([2, 3, 4, 5]));
     });
@@ -187,6 +195,79 @@ void main() {
       final i = OffsetIterator.fromIterable([1, 2, 3, 4, 5]);
       expect(i.valueStream, emitsInOrder([1, 2, 3, 4, 5]));
       expect(await i.toList(), equals([1, 2, 3, 4, 5]));
+    });
+  });
+
+  group('.generateSeed', () {
+    test('by default returns a seed that returns the latest value', () async {
+      final i = OffsetIterator.range(0, end: 5, seed: () => -1);
+
+      expect(i.status, OffsetIteratorStatus.unseeded);
+      final seed = i.generateSeed();
+      expect(i.status, OffsetIteratorStatus.seeded);
+      expect(seed!(), -1);
+    });
+
+    test('accepts an override', () async {
+      final i = OffsetIterator.range(0, end: 5, seed: () => -1);
+
+      expect(i.status, OffsetIteratorStatus.unseeded);
+      final seed = i.generateSeed(override: () => -2);
+      expect(i.status, OffsetIteratorStatus.unseeded);
+      expect(seed!(), -2);
+    });
+
+    test('accepts a fallback', () async {
+      final i = OffsetIterator.range(0, end: 5);
+
+      expect(i.status, OffsetIteratorStatus.unseeded);
+      final seed = i.generateSeed(fallback: () => -2);
+      expect(i.status, OffsetIteratorStatus.seeded);
+      expect(seed!(), -2);
+    });
+  });
+
+  group('.status', () {
+    test('starts unseeded until value is accessed', () async {
+      final i = OffsetIterator.range(0, end: 5);
+
+      expect(i.status, OffsetIteratorStatus.unseeded);
+      expect(i.value, none());
+      expect(i.status, OffsetIteratorStatus.seeded);
+    });
+
+    test('starts unseeded until offset is accessed', () async {
+      final i = OffsetIterator.range(0, end: 5);
+
+      expect(i.status, OffsetIteratorStatus.unseeded);
+      expect(i.offset, 0);
+      expect(i.status, OffsetIteratorStatus.seeded);
+    });
+
+    test('is active once pull is invoked', () async {
+      final i = OffsetIterator.range(0, end: 5);
+
+      expect(i.status, OffsetIteratorStatus.unseeded);
+      i.pull();
+      expect(i.status, OffsetIteratorStatus.active);
+    });
+
+    test('is completed once all processing is complete', () async {
+      final i = OffsetIterator.range(0, end: 5);
+
+      expect(i.status, OffsetIteratorStatus.unseeded);
+      await i.toList();
+      expect(i.status, OffsetIteratorStatus.completed);
+    });
+
+    test('is completed when cancelled', () async {
+      final i = OffsetIterator.range(0, end: 5);
+
+      expect(i.status, OffsetIteratorStatus.unseeded);
+      i.pull();
+      expect(i.status, OffsetIteratorStatus.active);
+      i.cancel();
+      expect(i.status, OffsetIteratorStatus.completed);
     });
   });
 }

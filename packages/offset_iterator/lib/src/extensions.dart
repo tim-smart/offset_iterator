@@ -28,6 +28,9 @@ extension TransformExtension<T> on OffsetIterator<T> {
     return OffsetIterator(
       init: () => startOffset ?? parent.offset,
       process: (offset) async {
+        final earliest = parent.earliestAvailableOffset - 1;
+        if (offset < earliest) offset = earliest;
+
         final item = await parent.pull(offset);
         final newOffset = offset + 1;
 
@@ -45,30 +48,51 @@ extension TransformExtension<T> on OffsetIterator<T> {
       retention: retention ?? parent.retention,
     );
   }
+
+  OffsetIterator<T> transformIdentical(
+    FutureOr<List<T>?> Function(T) pred, {
+    SeedCallback<T>? seed,
+    int? retention,
+    int? startOffset,
+    int concurrency = 1,
+  }) =>
+      transform(
+        pred,
+        seed: generateSeed(startOffset: startOffset, override: seed),
+        retention: retention,
+        startOffset: startOffset,
+        concurrency: concurrency,
+      );
 }
 
 extension MapExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> map<R>(
     R Function(T) pred, {
     int? retention,
-  }) =>
-      transform(
-        (item) => [pred(item)],
-        seed: () => value.map(pred).toNullable(),
-        retention: retention,
-      );
+    int? startOffset,
+  }) {
+    final seed = generateSeed(startOffset: startOffset)!;
+    return transform(
+      (item) => [pred(item)],
+      seed: () => optionOf(seed()).map(pred).toNullable(),
+      retention: retention,
+      startOffset: startOffset,
+    );
+  }
 }
 
 extension AsyncMapExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> asyncMap<R>(
     Future<R> Function(T) pred, {
-    int? retention,
     SeedCallback<R>? seed,
+    int? retention,
+    int? startOffset,
   }) =>
       transform(
         (item) => pred(item).then((v) => [v]),
-        retention: retention,
         seed: seed,
+        retention: retention,
+        startOffset: startOffset,
       );
 }
 
@@ -78,6 +102,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
     R Function(R, T) reducer, {
     SeedCallback<R>? seed,
     int? retention,
+    int? startOffset,
   }) {
     R acc = initialValue;
 
@@ -88,6 +113,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
       },
       seed: seed,
       retention: retention,
+      startOffset: startOffset,
     );
   }
 }
@@ -97,14 +123,16 @@ extension TapExtension<T> on OffsetIterator<T> {
     void Function(T) effect, {
     SeedCallback<T>? seed,
     int? retention,
+    int? startOffset,
   }) =>
-      transform(
+      transformIdentical(
         (item) {
           effect(item);
           return [item];
         },
-        seed: seed ?? () => valueOrNull,
+        seed: seed,
         retention: retention,
+        startOffset: startOffset,
       );
 }
 
@@ -113,9 +141,11 @@ extension DistinctExtension<T> on OffsetIterator<T> {
     bool Function(T prev, T next)? equals,
     SeedCallback<T>? seed,
     int? retention,
+    int? startOffset,
   }) {
     bool Function(T, T) eq = equals ?? (prev, next) => prev == next;
     T? prev;
+    seed = generateSeed(override: seed, startOffset: startOffset);
 
     return transform(
       (item) {
@@ -129,10 +159,11 @@ extension DistinctExtension<T> on OffsetIterator<T> {
         return duplicate ? [] : [item];
       },
       seed: () {
-        prev = seed?.call() ?? valueOrNull;
+        prev = seed?.call();
         return prev;
       },
       retention: retention,
+      startOffset: startOffset,
     );
   }
 }
@@ -142,8 +173,10 @@ extension TakeWhileExtension<T> on OffsetIterator<T> {
     bool Function(T item, T? prev) predicate, {
     SeedCallback<T>? seed,
     int? retention,
+    int? startOffset,
   }) {
     T? prev;
+    seed = generateSeed(override: seed, startOffset: startOffset);
 
     return transform(
       (item) {
@@ -152,10 +185,11 @@ extension TakeWhileExtension<T> on OffsetIterator<T> {
         return more ? [item] : null;
       },
       seed: () {
-        prev = seed?.call() ?? valueOrNull;
+        prev = seed?.call();
         return prev;
       },
       retention: retention,
+      startOffset: startOffset,
     );
   }
 }
@@ -165,11 +199,13 @@ extension TakeUntilExtension<T> on OffsetIterator<T> {
     bool Function(T item, T? prev) predicate, {
     SeedCallback<T>? seed,
     int? retention,
+    int? startOffset,
   }) =>
       takeWhile(
         (item, prev) => !predicate(item, prev),
-        seed: seed ?? () => valueOrNull,
+        seed: seed,
         retention: retention,
+        startOffset: startOffset,
       );
 }
 
@@ -195,7 +231,7 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
     final parent = this;
 
     return OffsetIterator(
-      seed: () => parent.valueOrNull,
+      seed: parent.generateSeed(),
       retention: retention ?? parent.retention,
       init: () => tuple2(parent.offset, maxRetries),
       process: (acc) async {
@@ -234,6 +270,9 @@ extension FoldExtension<T> on OffsetIterator<T> {
     var acc = initialValue;
     var offset = startOffset ?? this.offset;
 
+    final earliest = earliestAvailableOffset - 1;
+    if (offset < earliest) offset = earliest;
+
     while (hasMore(offset)) {
       final result = await pull(offset);
       acc = result.map((v) => reducer(acc, v)).getOrElse(() => acc);
@@ -245,8 +284,11 @@ extension FoldExtension<T> on OffsetIterator<T> {
 }
 
 extension ToIListExtension<T> on OffsetIterator<T> {
-  Future<IList<T>> toIList({int? startOffset}) =>
-      fold(IList(), (acc, item) => acc.add(item), startOffset: startOffset);
+  Future<IList<T>> toIList({int? startOffset}) => fold(
+        IList(),
+        (acc, item) => acc.add(item),
+        startOffset: startOffset,
+      );
 }
 
 extension ToListExtension<T> on OffsetIterator<T> {
@@ -272,6 +314,9 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
         var child = acc.second as OffsetIterator<R>?;
 
         if (child == null) {
+          final earliest = parent.earliestAvailableOffset - 1;
+          if (offset < earliest) offset = earliest;
+
           final item = await parent.pull(offset);
           child = item.map(pred).toNullable();
           offset = offset + 1;
@@ -313,6 +358,9 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
 
     Future<int> fillQueue(int offset) async {
       while (queue.length < concurrency && parent.hasMore(offset)) {
+        final earliest = parent.earliestAvailableOffset - 1;
+        if (offset < earliest) offset = earliest;
+
         final item = await parent.pull(offset);
 
         item.map((item) {
