@@ -136,7 +136,7 @@ class OffsetIterator<T> {
     }
 
     // Handle offset requests for previous items
-    if (offset < _offset) return _valueAt(offset + 1);
+    if (offset < _offset) return valueAt(offset + 1);
 
     // Maybe fetch next chunk and re-fill buffer
     if (buffer.isEmpty) {
@@ -199,7 +199,7 @@ class OffsetIterator<T> {
     return Some(item);
   }
 
-  Option<T> _valueAt(int offset) {
+  Option<T> valueAt(int offset) {
     if (offset == _offset) {
       return value;
     }
@@ -247,7 +247,7 @@ class OffsetIterator<T> {
     _maybeSeedValue();
 
     if (startOffset != null) {
-      final value = _valueAt(startOffset).toNullable();
+      final value = valueAt(startOffset).toNullable();
       return value != null ? (() => value) : fallback;
     }
 
