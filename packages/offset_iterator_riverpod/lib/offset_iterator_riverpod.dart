@@ -19,17 +19,26 @@ OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
       return iterator;
     };
 
-Tuple2<Option<T>, bool> Function(
+Option<T> Function(
   OffsetIterator<T> iterator,
-) iteratorValueProvider<T>(ProviderRef<Tuple2<Option<T>, bool>> ref) =>
-    (iterator) {
+) iteratorValueProvider<T>(ProviderRef<Option<T>> ref) => (iterator) {
       final sub = iterator.valueStream.listen((s) {
-        ref.state = tuple2(Some(s), iterator.hasMore());
-      }, onDone: () {
-        ref.state = tuple2(iterator.value, iterator.hasMore());
+        ref.state = Some(s);
       });
 
       ref.onDispose(sub.cancel);
 
-      return tuple2(iterator.value, true);
+      return iterator.value;
+    };
+
+bool Function(
+  OffsetIterator<T> iterator,
+) iteratorHasMoreProvider<T>(ProviderRef<bool> ref) => (iterator) {
+      final sub = iterator.valueStream.listen((_) {}, onDone: () {
+        ref.state = false;
+      });
+
+      ref.onDispose(sub.cancel);
+
+      return true;
     };
