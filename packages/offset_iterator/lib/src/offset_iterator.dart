@@ -195,15 +195,7 @@ class OffsetIterator<T> {
     return _nextItem(buffer.removeFirst());
   }
 
-  Option<T> _nextItem(T? item) {
-    late final T nextItem;
-
-    if (item == null) {
-      nextItem = buffer.removeFirst();
-    } else {
-      nextItem = item;
-    }
-
+  Option<T> _nextItem(T item) {
     if (retention != 0 && _value != null) {
       log.add(_value!);
 
@@ -212,12 +204,12 @@ class OffsetIterator<T> {
       }
     }
 
-    _value = nextItem;
+    _value = item;
     _offset = _offset + 1;
 
     _notifyListeners();
 
-    return Some(nextItem);
+    return Some(item);
   }
 
   Option<T> valueAt(int offset) {
