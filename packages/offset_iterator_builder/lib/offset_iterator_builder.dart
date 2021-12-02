@@ -82,19 +82,20 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
     _demand().then((_) => _initialDemand(remaining - 1));
   }
 
-  Future<void> _demand() {
-    if (iterator.isLastOffset(_offset)) return Future.sync(() {});
+  Future<void> _demand() async {
+    if (iterator.isLastOffset(_offset)) return;
 
     if (_offset < iterator.earliestAvailableOffset) {
       _offset = iterator.earliestAvailableOffset;
     }
 
-    return iterator.pull(_offset).then((item) {
-      _offset = _offset + 1;
-      return _handleData(item);
-    }).catchError((err) {
+    try {
+      final item = await iterator.pull(_offset);
+      _offset++;
+      _handleData(item);
+    } catch (err) {
       _handleError(err);
-    });
+    }
   }
 
   Future<void> _handleData(Option<T> item) async {

@@ -409,8 +409,7 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
           offset = await fillQueue(offset);
         }
 
-        final chunkFuture = queue.removeFirst();
-        final chunk = chunkFuture is Future ? await chunkFuture : chunkFuture;
+        final chunk = await queue.removeFirst();
         offset = await fillQueue(offset);
 
         return OffsetIteratorState(
