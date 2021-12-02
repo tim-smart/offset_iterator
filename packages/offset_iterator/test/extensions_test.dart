@@ -57,9 +57,9 @@ void main() {
       }, seed: () => 0);
 
       expect(i.value, some(0));
-      expect(i.offset, 1);
-      expect(await i.toList(startOffset: 0),
-          equals([0, 1, 101, 1001, 2, 102, 1002]));
+      expect(i.offset, 0);
+      expect(
+          await i.toList(startOffset: 0), equals([1, 101, 1001, 2, 102, 1002]));
     });
   });
 
@@ -69,7 +69,7 @@ void main() {
           OffsetIterator.fromIterable([2, 3], seed: () => 1).map((i) => i * 2);
 
       expect(i.value, some(2));
-      expect(i.offset, 1);
+      expect(i.offset, 0);
       expect(await i.toList(), equals([4, 6]));
     });
 
@@ -82,17 +82,16 @@ void main() {
       await i.run();
       expect(i.log.toList(), [1, 2]);
 
-      final mapped = i.map((i) => i * 2, startOffset: 1);
+      final mapped = i.map((i) => i * 2, startOffset: 0);
 
       expect(mapped.value, some(2));
-      expect(mapped.offset, 1);
+      expect(mapped.offset, 0);
       expect(await mapped.toList(), equals([4, 6]));
     });
 
-    test('startOffset from 0', () async {
+    test('unseeded startOffset from 0', () async {
       final i = OffsetIterator.fromIterable(
-        [2, 3],
-        seed: () => 1,
+        [1, 2, 3],
         retention: -1,
       );
       await i.run();
@@ -112,7 +111,7 @@ void main() {
           .asyncMap((i) async => i * 2, seed: () => 2);
 
       expect(i.value, some(2));
-      expect(i.offset, 1);
+      expect(i.offset, 0);
       expect(await i.toList(), equals([4, 6]));
     });
   });
@@ -132,7 +131,7 @@ void main() {
           .scan<int>(0, (acc, i) => acc + i, seed: () => -1);
 
       expect(i.value, some(-1));
-      expect(i.offset, 1);
+      expect(i.offset, 0);
       expect(await i.toList(), equals([1, 3, 6]));
     });
   });
@@ -294,7 +293,7 @@ void main() {
       );
 
       expect(i.value, some(0));
-      expect(i.offset, 1);
+      expect(i.offset, 0);
       expect(await i.toList(), equals([1, 101, 1001, 2, 102, 1002]));
     });
   });

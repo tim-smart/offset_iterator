@@ -107,9 +107,6 @@ class OffsetIterator<T> {
   void _maybeSeedValue() {
     if (_status != OffsetIteratorStatus.unseeded) return;
     _value = _seed?.call();
-    if (_value != null) {
-      _offset = 1;
-    }
     _status = OffsetIteratorStatus.seeded;
   }
 
