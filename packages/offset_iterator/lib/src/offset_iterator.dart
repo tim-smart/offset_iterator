@@ -8,16 +8,20 @@ class OffsetIteratorState<T> {
     required this.acc,
     required this.chunk,
     required this.hasMore,
+    this.error,
+    this.stackTrace,
   });
 
   final dynamic acc;
-  final List<T> chunk;
+  final Iterable<T> chunk;
   final bool hasMore;
+  final dynamic error;
+  final StackTrace? stackTrace;
 }
 
 typedef InitCallback = FutureOr<dynamic> Function();
 typedef ProcessCallback<T> = FutureOr<OffsetIteratorState<T>> Function(dynamic);
-typedef CleanupCallback = void Function(dynamic);
+typedef CleanupCallback = FutureOr<void> Function(dynamic);
 typedef SeedCallback<T> = T? Function();
 
 enum OffsetIteratorStatus {
@@ -36,12 +40,13 @@ class OffsetIterator<T> {
     this.retention = 0,
   })  : _init = init,
         _process = process,
-        _cleanup = cleanup,
-        _seed = seed;
+        _seed = seed {
+    _cleanup = cleanup ?? (_) {};
+  }
 
   final InitCallback _init;
   final ProcessCallback<T> _process;
-  final CleanupCallback? _cleanup;
+  late final CleanupCallback _cleanup;
   final SeedCallback? _seed;
 
   /// The latest state from the `process` function.
@@ -176,21 +181,30 @@ class OffsetIterator<T> {
     state = nextState;
 
     if (nextState.hasMore == false) {
-      cancel();
+      final cancelFuture = cancel();
+      return cancelFuture is Future
+          ? cancelFuture.then((_) => _processNextState())
+          : _processNextState();
     }
 
-    final chunkLength = nextState.chunk.length;
+    return _processNextState();
+  }
+
+  FutureOr<Option<T>> _processNextState() {
+    if (state.error != null) throw state.error;
+
+    final chunkLength = state.chunk.length;
     if (chunkLength == 0) {
-      if (nextState.hasMore == false) {
+      if (state.hasMore == false) {
         _notifyListeners();
       }
 
       return pull(offset);
     } else if (chunkLength == 1) {
-      return _nextItem(nextState.chunk[0]);
+      return _nextItem(state.chunk.first);
     }
 
-    buffer.addAll(nextState.chunk);
+    buffer.addAll(state.chunk);
 
     return _nextItem(buffer.removeFirst());
   }
@@ -227,22 +241,33 @@ class OffsetIterator<T> {
   }
 
   /// Prevents any new items from being added to the buffer, and
-  void cancel() {
-    if (_status == OffsetIteratorStatus.completed) return;
+  FutureOr<void> cancel() {
+    if (_status == OffsetIteratorStatus.completed) return null;
+    final status = _status;
+    _status = OffsetIteratorStatus.completed;
 
-    if (_status == OffsetIteratorStatus.active) {
-      if (_cleanup != null) {
-        _cleanup!(state.acc);
-      }
+    if (status != OffsetIteratorStatus.active) return _complete();
 
-      state = OffsetIteratorState(
-        acc: state.acc,
-        chunk: state.chunk,
-        hasMore: false,
-      );
+    if (_processFuture != null) {
+      return _processFuture!.then((_) {}).whenComplete(_cleanupAndComplete);
     }
 
-    _status = OffsetIteratorStatus.completed;
+    return _cleanupAndComplete();
+  }
+
+  FutureOr<void> _cleanupAndComplete() {
+    final futureOr = _cleanup(state.acc);
+    return futureOr is Future ? futureOr.whenComplete(_complete) : _complete();
+  }
+
+  FutureOr<void> _complete() {
+    state = OffsetIteratorState(
+      acc: state.acc,
+      chunk: state.chunk,
+      hasMore: false,
+      error: state.error,
+      stackTrace: state.stackTrace,
+    );
   }
 
   SeedCallback<T>? generateSeed({

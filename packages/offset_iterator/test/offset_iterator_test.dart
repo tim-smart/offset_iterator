@@ -39,6 +39,7 @@ void main() {
     });
 
     test('cleanup', () async {
+      var closed = false;
       final i = OffsetIterator(
         init: () => File('test/offset_iterator_test.dart').open(),
         process: (acc) async {
@@ -51,12 +52,16 @@ void main() {
             hasMore: chunk.isNotEmpty,
           );
         },
-        cleanup: (acc) => (acc as RandomAccessFile).close(),
+        cleanup: (file) async {
+          await file.close();
+          closed = true;
+        },
       );
 
       final result = await i.toList();
       expect(result, isNotEmpty);
       expect(result.first, 'import');
+      expect(closed, true);
     });
   });
 
@@ -327,6 +332,22 @@ void main() {
       i.earliestAvailableOffset = 6;
       expect(i.earliestAvailableOffset, 6);
       expect(i.log.isEmpty, true);
+    });
+  });
+
+  group('state', () {
+    test('allows adding of errors', () async {
+      final i = OffsetIterator(
+        init: () {},
+        process: (_) => const OffsetIteratorState(
+          acc: null,
+          chunk: [],
+          hasMore: false,
+          error: 'fail',
+        ),
+      );
+
+      expect(() => i.pull(), throwsA('fail'));
     });
   });
 }
