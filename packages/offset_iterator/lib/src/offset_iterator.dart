@@ -87,7 +87,6 @@ class OffsetIterator<T> {
   /// The `process` function can return a chunk of multiple items, but because
   /// `pull` only returns one item at a time, the extra items are buffered.
   final buffer = Queue<T>();
-  var _bufferLength = 0;
 
   /// The log contains previously pulled items. Retention is controlled by the
   /// `rentention` property.
@@ -100,7 +99,7 @@ class OffsetIterator<T> {
   bool hasMore([int? offset]) {
     offset ??= _offset;
     return offset < _offset ||
-        offset < (_offset + _bufferLength) ||
+        offset < (_offset + buffer.length) ||
         state.hasMore;
   }
 
@@ -147,7 +146,7 @@ class OffsetIterator<T> {
   FutureOr<Option<T>> _handleOffsetRequest(int offset) {
     if (offset < _offset) return valueAt(offset + 1);
 
-    if (_bufferLength > 0) return _nextItem();
+    if (buffer.isNotEmpty) return _nextItem(buffer.removeFirst());
     if (state.hasMore == false) return const None();
 
     if (_processFuture != null) {
@@ -192,17 +191,15 @@ class OffsetIterator<T> {
     }
 
     buffer.addAll(nextState.chunk);
-    _bufferLength = chunkLength;
 
-    return _nextItem();
+    return _nextItem(buffer.removeFirst());
   }
 
-  Option<T> _nextItem([T? item]) {
+  Option<T> _nextItem(T? item) {
     late final T nextItem;
 
     if (item == null) {
       nextItem = buffer.removeFirst();
-      _bufferLength--;
     } else {
       nextItem = item;
     }
