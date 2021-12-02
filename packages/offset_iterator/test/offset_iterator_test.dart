@@ -141,8 +141,8 @@ void main() {
       expect(await i.pull(0), some('the'));
 
       // If offset is out of range, it throws a RangeError
-      await expectLater(i.pull(-1), throwsRangeError);
-      await expectLater(i.pull(5), throwsRangeError);
+      await expectLater(() => i.pull(-1), throwsRangeError);
+      await expectLater(() => i.pull(5), throwsRangeError);
     });
   });
 

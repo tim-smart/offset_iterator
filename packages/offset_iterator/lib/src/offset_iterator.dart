@@ -45,7 +45,11 @@ class OffsetIterator<T> {
   final SeedCallback? _seed;
 
   /// The latest state from the `process` function.
-  OffsetIteratorState<T>? state;
+  var state = OffsetIteratorState<T>(
+    acc: null,
+    chunk: [],
+    hasMore: true,
+  );
 
   /// The internal status
   OffsetIteratorStatus get status => _status;
@@ -83,6 +87,7 @@ class OffsetIterator<T> {
   /// The `process` function can return a chunk of multiple items, but because
   /// `pull` only returns one item at a time, the extra items are buffered.
   final buffer = Queue<T>();
+  var _bufferLength = 0;
 
   /// The log contains previously pulled items. Retention is controlled by the
   /// `rentention` property.
@@ -95,8 +100,8 @@ class OffsetIterator<T> {
   bool hasMore([int? offset]) {
     offset ??= _offset;
     return offset < _offset ||
-        offset < (_offset + buffer.length) ||
-        (state?.hasMore ?? true);
+        offset < (_offset + _bufferLength) ||
+        state.hasMore;
   }
 
   /// Checks if the specified offset is the last item.
@@ -110,13 +115,13 @@ class OffsetIterator<T> {
 
   /// Pull the next item. If `currentOffset` is not provided, it will use the
   /// latest head offset.
-  FutureOr<Option<T>> pull([int? currentOffset]) async {
+  FutureOr<Option<T>> pull([int? currentOffset]) {
     final offset = currentOffset ?? _offset;
     if (offset < 0 || offset > _offset) {
       throw RangeError.range(offset, 0, _offset, 'currentOffset');
     }
 
-    if (state == null) {
+    if (_status.index < OffsetIteratorStatus.active.index) {
       _maybeSeedValue();
       final initResult = _init();
       return initResult is Future
@@ -142,14 +147,14 @@ class OffsetIterator<T> {
   FutureOr<Option<T>> _handleOffsetRequest(int offset) {
     if (offset < _offset) return valueAt(offset + 1);
 
-    if (buffer.isNotEmpty) return _nextItem(buffer.removeFirst());
-    if (state!.hasMore == false) return const None();
+    if (_bufferLength > 0) return _nextItem();
+    if (state.hasMore == false) return const None();
 
     if (_processFuture != null) {
       return (_processFuture as Future).then((_) => pull(offset));
     }
 
-    final futureOr = _process(state!.acc);
+    final futureOr = _process(state.acc);
 
     if (futureOr is Future) {
       _processFuture = futureOr as Future<OffsetIteratorState<T>>;
@@ -157,7 +162,7 @@ class OffsetIterator<T> {
       return _processFuture!.whenComplete(() {
         _processFuture = null;
       }).then<Option<T>>((nextState) {
-        if (state!.hasMore == false) return const None();
+        if (state.hasMore == false) return const None();
         return _handleNextState(offset, nextState);
       });
     }
@@ -183,29 +188,39 @@ class OffsetIterator<T> {
 
       return pull(offset);
     } else if (chunkLength == 1) {
-      return _nextItem(nextState.chunk.first);
+      return _nextItem(nextState.chunk[0]);
     }
 
     buffer.addAll(nextState.chunk);
+    _bufferLength = chunkLength;
 
-    return _nextItem(buffer.removeFirst());
+    return _nextItem();
   }
 
-  Option<T> _nextItem(T item) {
+  Option<T> _nextItem([T? item]) {
+    late final T nextItem;
+
+    if (item == null) {
+      nextItem = buffer.removeFirst();
+      _bufferLength--;
+    } else {
+      nextItem = item;
+    }
+
     if (retention != 0 && _value != null) {
       log.add(_value!);
 
-      while (retention > -1 && log.length > retention) {
+      if (retention > -1 && log.length > retention) {
         log.removeFirst();
       }
     }
 
-    _value = item;
+    _value = nextItem;
     _offset = _offset + 1;
 
     _notifyListeners();
 
-    return Some(item);
+    return Some(nextItem);
   }
 
   Option<T> valueAt(int offset) {
@@ -228,12 +243,12 @@ class OffsetIterator<T> {
 
     if (_status == OffsetIteratorStatus.active) {
       if (_cleanup != null) {
-        _cleanup!(state!.acc);
+        _cleanup!(state.acc);
       }
 
       state = OffsetIteratorState(
-        acc: state!.acc,
-        chunk: state!.chunk,
+        acc: state.acc,
+        chunk: state.chunk,
         hasMore: false,
       );
     }

@@ -5,6 +5,37 @@ import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 
+FutureOr<OffsetIteratorState<R>> Function<R>(
+  int offset,
+  Option<T> item,
+  FutureOr<List<R>?> chunkFuture,
+) _handleItem<T>(OffsetIterator<T> parent) {
+  final handleNextChunk = _handleNextChunk(parent);
+
+  return <R>(offset, item, chunkFuture) {
+    final newOffset = offset + 1;
+
+    return chunkFuture is Future
+        ? (chunkFuture as Future)
+            .then((chunk) => handleNextChunk(newOffset, item, chunk))
+        : handleNextChunk(newOffset, item, chunkFuture);
+  };
+}
+
+FutureOr<OffsetIteratorState<R>> Function<R>(
+  int newOffset,
+  Option<T> item,
+  List<R>? chunk,
+) _handleNextChunk<T>(OffsetIterator<T> parent) => <R>(newOffset, item, chunk) {
+      final hasMore = item.isSome() && chunk != null;
+
+      return OffsetIteratorState(
+        acc: newOffset,
+        chunk: chunk ?? [],
+        hasMore: hasMore && parent.hasMore(newOffset),
+      );
+    };
+
 extension TransformExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> transform<R>(
     FutureOr<List<R>?> Function(T) pred, {
@@ -24,25 +55,19 @@ extension TransformExtension<T> on OffsetIterator<T> {
     }
 
     final parent = this;
+    final handleItem = _handleItem(parent);
 
     return OffsetIterator(
       init: () => startOffset ?? parent.offset,
-      process: (offset) async {
+      process: (offset) {
         final earliest = parent.earliestAvailableOffset - 1;
         if (offset < earliest) offset = earliest;
 
-        final item = await parent.pull(offset);
-        final newOffset = offset + 1;
-
-        final chunkFuture = item.map(pred).toNullable();
-        final chunk = chunkFuture is Future ? await chunkFuture : chunkFuture;
-        final hasMore = item.isSome() && chunk != null;
-
-        return OffsetIteratorState(
-          acc: newOffset,
-          chunk: chunk ?? [],
-          hasMore: hasMore && parent.hasMore(newOffset),
-        );
+        final itemFuture = parent.pull(offset);
+        return itemFuture is Future
+            ? (itemFuture as Future).then(
+                (item) => handleItem(offset, item, item.map(pred).toNullable()))
+            : handleItem(offset, itemFuture, itemFuture.map(pred).toNullable());
       },
       seed: seed,
       retention: retention ?? parent.retention,
@@ -274,7 +299,8 @@ extension FoldExtension<T> on OffsetIterator<T> {
     if (offset < earliest) offset = earliest;
 
     while (hasMore(offset)) {
-      final result = await pull(offset);
+      final resultFuture = pull(offset);
+      final result = resultFuture is Future ? await resultFuture : resultFuture;
       acc = result.map((v) => reducer(acc, v)).getOrElse(() => acc);
       offset = offset + 1;
     }
@@ -317,13 +343,15 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
           final earliest = parent.earliestAvailableOffset - 1;
           if (offset < earliest) offset = earliest;
 
-          final item = await parent.pull(offset);
+          final itemFuture = parent.pull(offset);
+          final item = itemFuture is Future ? await itemFuture : itemFuture;
           child = item.map(pred).toNullable();
           offset = offset + 1;
         }
 
         if (child != null) {
-          final item = await child.pull();
+          final itemFuture = child.pull();
+          final item = itemFuture is Future ? await itemFuture : itemFuture;
           final childHasMore = child.hasMore();
 
           return OffsetIteratorState(
@@ -361,7 +389,8 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
         final earliest = parent.earliestAvailableOffset - 1;
         if (offset < earliest) offset = earliest;
 
-        final item = await parent.pull(offset);
+        final itemFuture = parent.pull(offset);
+        final item = itemFuture is Future ? await itemFuture : itemFuture;
 
         item.map((item) {
           queue.add(predicate(item));
@@ -380,7 +409,8 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
           offset = await fillQueue(offset);
         }
 
-        final chunk = await queue.removeFirst();
+        final chunkFuture = queue.removeFirst();
+        final chunk = chunkFuture is Future ? await chunkFuture : chunkFuture;
         offset = await fillQueue(offset);
 
         return OffsetIteratorState(
@@ -398,7 +428,8 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
 extension RunExtension on OffsetIterator {
   Future<void> run() async {
     while (hasMore()) {
-      await pull();
+      final futureOr = pull();
+      if (futureOr is Future) await futureOr;
     }
   }
 }
