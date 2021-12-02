@@ -112,12 +112,14 @@ extension AsyncMapExtension<T> on OffsetIterator<T> {
     SeedCallback<R>? seed,
     int? retention,
     int? startOffset,
+    int concurrency = 1,
   }) =>
       transform(
         (item) => pred(item).then((v) => [v]),
         seed: seed,
         retention: retention,
         startOffset: startOffset,
+        concurrency: concurrency,
       );
 }
 

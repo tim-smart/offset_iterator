@@ -1,26 +1,21 @@
 import 'dart:async';
 
 import 'package:fpdart/fpdart.dart';
-import 'package:offset_iterator/src/controller.dart';
+import 'package:offset_iterator/offset_iterator.dart';
 import 'package:test/test.dart';
 
 Tuple2<OffsetIteratorSink<int>, Future<List<int>>> multiplierSink() {
   final c = OffsetIteratorController<int>();
-  final i = c.iterator;
   final completer = Completer<List<int>>.sync();
-  final results = <int>[];
 
-  Future<void> next() => Future.value(i.pull())
-      .then((number) => number.match(
-            (i) {
-              results.add(i * 2);
-              return next();
-            },
-            () => completer.complete(results),
-          ))
-      .catchError((err) => completer.completeError(err));
-
-  Future.microtask(next);
+  c.iterator
+      .asyncMap((number) async {
+        // Simulate expensive operation
+        await Future.delayed(const Duration(milliseconds: 5));
+        return number * 2;
+      })
+      .toList()
+      .then(completer.complete, onError: completer.completeError);
 
   return tuple2(c.sink, completer.future);
 }
@@ -31,10 +26,12 @@ void main() {
       final m = multiplierSink();
       final sink = m.first;
 
+      await Future.microtask(() {});
+
       sink.add(1);
       sink.add(2);
       sink.add(3);
-      sink.close(4);
+      await sink.close(4);
 
       expect(await m.second, [2, 4, 6, 8]);
     });
