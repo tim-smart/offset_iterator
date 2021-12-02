@@ -56,16 +56,16 @@ class OffsetIterator<T> {
   var _status = OffsetIteratorStatus.unseeded;
   Future<OffsetIteratorState<T>>? _processFuture;
 
-  T? _value;
+  Option<T> _value = const None();
 
-  /// Get the current head value, or `null`.
-  T? get valueOrNull {
+  /// Get the current head value as an option.
+  Option<T> get value {
     _maybeSeedValue();
     return _value;
   }
 
-  /// Get the current head value as an option.
-  Option<T> get value => optionOf(valueOrNull);
+  /// Get the current head value, or `null`.
+  T? get valueOrNull => value.toNullable();
 
   /// How many items to retain in the log.
   /// If set to a negative number (e.g. -1), it will retain everything.
@@ -108,7 +108,7 @@ class OffsetIterator<T> {
 
   void _maybeSeedValue() {
     if (_status != OffsetIteratorStatus.unseeded) return;
-    _value = _seed?.call();
+    _value = Option.fromNullable(_seed?.call());
     _status = OffsetIteratorStatus.seeded;
   }
 
@@ -196,20 +196,20 @@ class OffsetIterator<T> {
   }
 
   Option<T> _nextItem(T item) {
-    if (retention != 0 && _value != null) {
-      log.add(_value!);
+    if (retention != 0 && _value is Some) {
+      log.add((_value as Some).value);
 
       if (retention > -1 && log.length > retention) {
         log.removeFirst();
       }
     }
 
-    _value = item;
+    _value = Some(item);
     _offset = _offset + 1;
 
     _notifyListeners();
 
-    return Some(item);
+    return _value;
   }
 
   Option<T> valueAt(int offset) {
@@ -255,8 +255,10 @@ class OffsetIterator<T> {
     _maybeSeedValue();
 
     if (startOffset != null) {
-      final value = valueAt(startOffset).toNullable();
-      return value != null ? (() => value) : fallback;
+      return valueAt(startOffset).match(
+        (v) => () => v,
+        () => fallback,
+      );
     }
 
     return () => valueOrNull ?? fallback?.call();
