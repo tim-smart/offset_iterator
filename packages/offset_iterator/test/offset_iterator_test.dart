@@ -195,11 +195,33 @@ void main() {
     });
   });
 
-  group('.valueStream', () {
-    test('it emits the latest values', () async {
+  group('.addListener', () {
+    test('adds a listener that gets triggered for each value change', () async {
       final i = OffsetIterator.fromIterable([1, 2, 3, 4, 5]);
-      expect(i.valueStream, emitsInOrder([1, 2, 3, 4, 5]));
+      final values = <int?>[];
+      i.addListener(() {
+        values.add(i.valueOrNull);
+      });
       expect(await i.toList(), equals([1, 2, 3, 4, 5]));
+      expect(values, [1, 2, 3, 4, 5]);
+    });
+
+    test('listeners are notified when iterators finished', () async {
+      final i = OffsetIterator(
+        init: () => 0,
+        process: (acc) => OffsetIteratorState(
+          acc: acc + 1,
+          chunk: acc < 2 ? [acc] : [],
+          hasMore: acc < 3,
+        ),
+      );
+      final values = <bool>[];
+      i.addListener(() {
+        values.add(i.hasMore());
+      });
+      expect(await i.toList(), equals([0, 1]));
+      await i.pull(); // Make sure of no duplicate calls
+      expect(values, [true, true, false]);
     });
   });
 

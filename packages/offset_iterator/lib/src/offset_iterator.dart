@@ -63,10 +63,6 @@ class OffsetIterator<T> {
   /// Get the current head value as an option.
   Option<T> get value => optionOf(valueOrNull);
 
-  /// A stream of the current head value.
-  Stream<T> get valueStream => _valueController.stream;
-  final StreamController<T> _valueController = StreamController.broadcast();
-
   /// How many items to retain in the log.
   /// If set to a negative number (e.g. -1), it will retain everything.
   /// Defaults to 0 (retains nothing).
@@ -91,6 +87,8 @@ class OffsetIterator<T> {
   /// The log contains previously pulled items. Retention is controlled by the
   /// `rentention` property.
   final log = Queue<T>();
+
+  final _listeners = <void Function()>[];
 
   /// Check if there is more items after the specified offset.
   /// If no offset it specified, it uses the head offset.
@@ -137,10 +135,7 @@ class OffsetIterator<T> {
 
     // Maybe fetch next chunk and re-fill buffer
     if (buffer.isEmpty) {
-      if (!state!.hasMore) {
-        _maybeCloseValueController();
-        return const None();
-      }
+      if (state!.hasMore == false) return const None();
 
       if (_processFuture != null) {
         await _processFuture;
@@ -167,6 +162,10 @@ class OffsetIterator<T> {
 
       final chunkLength = state!.chunk.length;
       if (chunkLength == 0) {
+        if (state!.hasMore == false) {
+          _notifyListeners();
+        }
+
         return pull(offset);
       } else if (chunkLength == 1) {
         return _nextItem(state!.chunk.first);
@@ -190,8 +189,7 @@ class OffsetIterator<T> {
     _value = item;
     _offset = _offset + 1;
 
-    _valueController.add(item);
-    if (!hasMore()) _maybeCloseValueController();
+    _notifyListeners();
 
     return Some(item);
   }
@@ -229,11 +227,6 @@ class OffsetIterator<T> {
     _status = OffsetIteratorStatus.completed;
   }
 
-  void _maybeCloseValueController() {
-    if (_valueController.isClosed) return;
-    _valueController.close();
-  }
-
   SeedCallback<T>? generateSeed({
     int? startOffset,
     SeedCallback<T>? override,
@@ -259,6 +252,24 @@ class OffsetIterator<T> {
       log.removeFirst();
     }
   }
+
+  void _notifyListeners() {
+    if (_listeners.isEmpty) return;
+
+    for (final listener in _listeners) {
+      listener();
+    }
+  }
+
+  void addListener(void Function() listener) {
+    _listeners.add(listener);
+  }
+
+  void removeListener(void Function() listener) {
+    _listeners.removeWhere((element) => element == listener);
+  }
+
+  void removeAllListeners() => _listeners.clear();
 
   /// Create an `OffsetIterator` from the provided `Stream`.
   /// If a `ValueStream` with a seed is given, it will populate the iterator's
