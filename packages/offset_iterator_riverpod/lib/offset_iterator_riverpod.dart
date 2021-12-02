@@ -41,7 +41,8 @@ bool Function(
       if (!iterator.hasMore()) return false;
 
       void onChange() {
-        ref.state = iterator.hasMore();
+        if (iterator.hasMore()) return;
+        ref.state = false;
       }
 
       iterator.addListener(onChange);
