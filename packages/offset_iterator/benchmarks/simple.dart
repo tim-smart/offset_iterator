@@ -3,11 +3,12 @@ import 'package:offset_iterator/offset_iterator.dart';
 
 void main() async {
   final numbers = Iterable.generate(1000000);
+  final last = numbers.last;
 
   (await asyncBenchmark('OffsetIterator.range[k]', () async {
-    await OffsetIterator.range(0, end: numbers.last).run();
+    await OffsetIterator.range(0, end: last).run();
   }))
-      .report(units: numbers.last);
+      .report(units: numbers.length);
 
   (await asyncBenchmark('OffsetIterator.fromIterable[k]', () async {
     await OffsetIterator.fromIterable(numbers).run();

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 
 /// [OffsetIteratorSink] is an [EventSink] that allows you to wait for the data
@@ -13,7 +14,7 @@ abstract class OffsetIteratorSink<T> implements EventSink<T> {
   FutureOr<void> addError(Object error, [StackTrace? stackTrace]);
 
   @override
-  FutureOr<void> close([T? data]);
+  FutureOr<void> close([Option<T> data]);
 }
 
 abstract class _Item<T> {
@@ -34,7 +35,7 @@ class _Error<T> extends _Item<T> {
 
 class _Close<T> extends _Item<T> {
   _Close(this.data);
-  final T? data;
+  final Option<T> data;
 }
 
 enum OffsetIteratorControllerState {
@@ -92,7 +93,7 @@ class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
   /// Works the same as [add], except the controller will be closed and no longer
   /// accept new data.
   @override
-  FutureOr<void> close([T? data]) => _add(_Close(data));
+  FutureOr<void> close([Option<T> data = const None()]) => _add(_Close(data));
 
   FutureOr<void> _add(_Item<T> item) {
     if (_state == OffsetIteratorControllerState.closed) {
@@ -153,7 +154,7 @@ class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
     var hasMore = true;
     if (_nextItem is _Close) {
       final item = _assignNextItem() as _Close<T>;
-      if (item.data != null) chunk.add(item.data!);
+      item.data.map(chunk.add);
       item.completer.complete();
       hasMore = false;
     }

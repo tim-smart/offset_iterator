@@ -31,7 +31,7 @@ void main() {
       sink.add(1);
       sink.add(2);
       sink.add(3);
-      await sink.close(4);
+      await sink.close(some(4));
 
       expect(await m.second, [2, 4, 6, 8]);
     });
@@ -43,7 +43,7 @@ void main() {
       sink.add(1);
       sink.add(2);
       sink.addError('fail');
-      expect(() => sink.close(4), throwsStateError);
+      expect(() => sink.close(), throwsStateError);
 
       await expectLater(m.second, throwsA('fail'));
     });
