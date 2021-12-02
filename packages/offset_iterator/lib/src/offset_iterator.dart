@@ -213,7 +213,7 @@ class OffsetIterator<T> {
     if (retention != 0 && _value is Some) {
       log.add((_value as Some).value);
 
-      if (retention > -1 && log.length > retention) {
+      while (retention > -1 && log.length > retention) {
         log.removeFirst();
       }
     }
