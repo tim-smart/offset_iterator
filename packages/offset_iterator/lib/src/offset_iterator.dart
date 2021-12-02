@@ -50,7 +50,7 @@ class OffsetIterator<T> {
   /// The internal status
   OffsetIteratorStatus get status => _status;
   var _status = OffsetIteratorStatus.unseeded;
-  FutureOr<OffsetIteratorState<T>>? _processFuture;
+  Future<OffsetIteratorState<T>>? _processFuture;
 
   T? _value;
 
@@ -110,7 +110,7 @@ class OffsetIterator<T> {
 
   /// Pull the next item. If `currentOffset` is not provided, it will use the
   /// latest head offset.
-  Future<Option<T>> pull([int? currentOffset]) async {
+  FutureOr<Option<T>> pull([int? currentOffset]) async {
     final offset = currentOffset ?? _offset;
     if (offset < 0 || offset > _offset) {
       throw RangeError.range(offset, 0, _offset, 'currentOffset');
@@ -119,60 +119,74 @@ class OffsetIterator<T> {
     if (state == null) {
       _maybeSeedValue();
       final initResult = _init();
-      final acc = initResult is Future ? await initResult : initResult;
-
-      state = OffsetIteratorState(
-        acc: acc,
-        chunk: [],
-        hasMore: true,
-      );
-
-      _status = OffsetIteratorStatus.active;
+      return initResult is Future
+          ? initResult.then((r) => _handleInit(offset, r))
+          : _handleInit(offset, initResult);
     }
 
-    // Handle offset requests for previous items
+    return _handleOffsetRequest(offset);
+  }
+
+  FutureOr<Option<T>> _handleInit(int offset, dynamic acc) {
+    state = OffsetIteratorState(
+      acc: acc,
+      chunk: [],
+      hasMore: true,
+    );
+
+    _status = OffsetIteratorStatus.active;
+
+    return _handleOffsetRequest(offset);
+  }
+
+  FutureOr<Option<T>> _handleOffsetRequest(int offset) {
     if (offset < _offset) return valueAt(offset + 1);
 
-    // Maybe fetch next chunk and re-fill buffer
-    if (buffer.isEmpty) {
-      if (state!.hasMore == false) return const None();
+    if (buffer.isNotEmpty) return _nextItem(buffer.removeFirst());
+    if (state!.hasMore == false) return const None();
 
-      if (_processFuture != null) {
-        await _processFuture;
-        return pull(offset);
-      }
-
-      try {
-        _processFuture = _process(state!.acc);
-
-        if (_processFuture is Future) {
-          final nextState = await _processFuture;
-          if (!state!.hasMore) return const None();
-          state = nextState;
-        } else {
-          state = _processFuture as OffsetIteratorState<T>;
-        }
-      } finally {
-        _processFuture = null;
-      }
-
-      if (state!.hasMore == false) {
-        cancel();
-      }
-
-      final chunkLength = state!.chunk.length;
-      if (chunkLength == 0) {
-        if (state!.hasMore == false) {
-          _notifyListeners();
-        }
-
-        return pull(offset);
-      } else if (chunkLength == 1) {
-        return _nextItem(state!.chunk.first);
-      }
-
-      buffer.addAll(state!.chunk);
+    if (_processFuture != null) {
+      return (_processFuture as Future).then((_) => pull(offset));
     }
+
+    final futureOr = _process(state!.acc);
+
+    if (futureOr is Future) {
+      _processFuture = futureOr as Future<OffsetIteratorState<T>>;
+
+      return _processFuture!.whenComplete(() {
+        _processFuture = null;
+      }).then<Option<T>>((nextState) {
+        if (state!.hasMore == false) return const None();
+        return _handleNextState(offset, nextState);
+      });
+    }
+
+    return _handleNextState(offset, futureOr);
+  }
+
+  FutureOr<Option<T>> _handleNextState(
+    int offset,
+    OffsetIteratorState<T> nextState,
+  ) {
+    state = nextState;
+
+    if (nextState.hasMore == false) {
+      cancel();
+    }
+
+    final chunkLength = nextState.chunk.length;
+    if (chunkLength == 0) {
+      if (nextState.hasMore == false) {
+        _notifyListeners();
+      }
+
+      return pull(offset);
+    } else if (chunkLength == 1) {
+      return _nextItem(nextState.chunk.first);
+    }
+
+    buffer.addAll(nextState.chunk);
 
     return _nextItem(buffer.removeFirst());
   }
