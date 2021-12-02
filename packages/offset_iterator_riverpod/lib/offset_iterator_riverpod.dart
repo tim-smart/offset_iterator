@@ -25,9 +25,12 @@ OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
 Option<T> Function(
   OffsetIterator<T> iterator,
 ) iteratorValueProvider<T>(ProviderRef<Option<T>> ref) => (iterator) {
-      ref.onDispose(iterator.valueStream.listen((s) {
-        ref.state = Some(s);
-      }).cancel);
+      void onChange() {
+        ref.state = iterator.value;
+      }
+
+      iterator.addListener(onChange);
+      ref.onDispose(() => iterator.removeListener(onChange));
 
       return iterator.value;
     };
@@ -37,9 +40,12 @@ bool Function(
 ) iteratorHasMoreProvider<T>(ProviderRef<bool> ref) => (iterator) {
       if (!iterator.hasMore()) return false;
 
-      ref.onDispose(iterator.valueStream.listen((_) {}, onDone: () {
-        ref.state = false;
-      }).cancel);
+      void onChange() {
+        ref.state = iterator.hasMore();
+      }
+
+      iterator.addListener(onChange);
+      ref.onDispose(() => iterator.removeListener(onChange));
 
       return true;
     };
