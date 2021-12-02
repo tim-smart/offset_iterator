@@ -11,6 +11,7 @@ class ConsumerGroup<T> {
 
   final OffsetIterator<T> iterator;
   final _offsets = <OffsetIterator<T>, int>{};
+  Future<void>? _sweepFuture;
 
   Set<OffsetIterator<T>> get children => _offsets.keys.toSet();
 
@@ -56,7 +57,11 @@ class ConsumerGroup<T> {
   }
 
   void _maybeSetEarliestOffset() {
-    if (_offsets.isEmpty) return;
-    iterator.earliestAvailableOffset = _offsets.values.reduce(math.min);
+    if (_offsets.isEmpty || _sweepFuture != null) return;
+
+    _sweepFuture = Future.microtask(() {
+      iterator.earliestAvailableOffset = _offsets.values.reduce(math.min);
+      _sweepFuture = null;
+    });
   }
 }

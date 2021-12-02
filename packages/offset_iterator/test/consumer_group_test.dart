@@ -13,26 +13,33 @@ void main() {
 
       expect(parent.earliestAvailableOffset, 0);
       expect(await child1.pull(), equals(some(0)));
+      await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 1);
 
       expect(await child1.pull(), equals(some(1)));
+      await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 1);
 
       expect(await child2.pull(), equals(some(0)));
+      await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 2);
 
       expect(await child2.pull(), equals(some(1)));
+      await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 2);
       expect(parent.log.isEmpty, true);
 
       expect(await child1.toList(), [2, 3, 4, 5]);
+      await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 3);
       expect(parent.log.toList(), [2, 3, 4]);
 
       expect(await child2.pull(), equals(some(2)));
+      await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 4);
 
       expect(await child2.toList(), [3, 4, 5]);
+      await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 6);
 
       expect(parent.log.isEmpty, true);
