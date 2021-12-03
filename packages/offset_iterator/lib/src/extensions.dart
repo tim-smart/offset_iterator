@@ -236,8 +236,22 @@ extension TakeUntilExtension<T> on OffsetIterator<T> {
       );
 }
 
-extension AccumulateExtension<T> on OffsetIterator<IList<T>> {
-  OffsetIterator<IList<T>> accumulate({
+extension AccumulateExtension<T> on OffsetIterator<List<T>> {
+  /// Concats a stream of [List]'s together, and emits a new list each time.
+  OffsetIterator<List<T>> accumulate({
+    SeedCallback<List<T>>? seed,
+    int? retention,
+  }) =>
+      scan(
+        [],
+        (acc, chunk) => [...acc, ...chunk],
+        seed: seed,
+        retention: retention,
+      );
+}
+
+extension AccumulateIListExtension<T> on OffsetIterator<IList<T>> {
+  OffsetIterator<IList<T>> accumulateIList({
     SeedCallback<IList<T>>? seed,
     int? retention,
   }) =>

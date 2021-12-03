@@ -203,12 +203,32 @@ void main() {
   });
 
   group('accumulate', () {
+    test('concats each list of items together', () async {
+      final i = OffsetIterator.fromIterable<List<int>>([
+        const [1, 2, 3],
+        const [4, 5, 6],
+        const [7, 8, 9],
+      ]).accumulate();
+
+      expect(i.value, none());
+      expect(
+        await i.toList(),
+        equals([
+          const [1, 2, 3],
+          const [1, 2, 3, 4, 5, 6],
+          const [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        ]),
+      );
+    });
+  });
+
+  group('accumulateIList', () {
     test('concats each IList of items together', () async {
       final i = OffsetIterator.fromIterable<IList<int>>([
         IList(const [1, 2, 3]),
         IList(const [4, 5, 6]),
         IList(const [7, 8, 9]),
-      ]).accumulate();
+      ]).accumulateIList();
 
       expect(i.value, none());
       expect(
