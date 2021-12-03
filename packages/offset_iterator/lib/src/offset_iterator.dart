@@ -121,8 +121,6 @@ class OffsetIterator<T> {
   /// Returns `true` if all the data has been pulled.
   bool get drained => buffer.isEmpty && !state.hasMore;
 
-  final _drainedCompleter = Completer<void>();
-
   void _maybeSeedValue() {
     if (_status != OffsetIteratorStatus.unseeded) return;
     _value = Option.fromNullable(_seed?.call());
@@ -306,9 +304,6 @@ class OffsetIterator<T> {
     );
   }
 
-  /// Returns a Future that resolves when the iterator has been completely drained.
-  Future<void> drain() => _drainedCompleter.future;
-
   SeedCallback<T>? generateSeed({
     int? startOffset,
     SeedCallback<T>? override,
@@ -338,8 +333,6 @@ class OffsetIterator<T> {
   }
 
   void _notifyListeners() {
-    if (drained) _drainedCompleter.complete();
-
     if (_listeners.isEmpty) return;
     for (final listener in _listeners) {
       listener();

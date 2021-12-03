@@ -4,9 +4,9 @@ import 'dart:collection';
 import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 
-/// [OffsetIteratorSink] is an [EventSink] that allows you to wait for the data
+/// [AwaitableSink] is an [EventSink] that allows you to wait for the data
 /// to be consumed.
-abstract class OffsetIteratorSink<T> implements EventSink<T> {
+abstract class AwaitableSink<T> implements EventSink<T> {
   /// Add data to the sink.
   ///
   /// Will return immediately if the data is ready for consumption.
@@ -32,11 +32,15 @@ abstract class OffsetIteratorSink<T> implements EventSink<T> {
   /// accept new data.
   @override
   FutureOr<void> close([Option<T> data]);
+}
 
+/// [DrainableSink] is an [AwaitableSink] that allows the consumer to start
+/// draining the internal pipeline.
+abstract class DrainableSink<T> implements AwaitableSink<T> {
   /// Start draining the sink.
   ///
   /// The `task` function is where you can call [add], [addError] and [close].
-  Future<void> drain(Future<void> Function(OffsetIteratorSink<T> sink) task);
+  Future<void> drain(Future<void> Function(AwaitableSink<T> sink) task);
 }
 
 abstract class _Item<T> {
@@ -72,7 +76,7 @@ typedef OffsetIteratorControllerTransform<T> = OffsetIterator<dynamic> Function(
 
 /// [OffsetIteratorController] implements sink behaviour and wraps an
 /// [OffsetIterator].
-class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
+class OffsetIteratorController<T> implements DrainableSink<T> {
   OffsetIteratorController({
     this.closeOnError = true,
     OffsetIteratorControllerTransform<T>? transform,
@@ -95,9 +99,13 @@ class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
   final _buffer = Queue<_Item<T>>();
   Completer<void>? _signal;
 
-  /// Expose the [OffsetIteratorSink] behaviour, which provides a smaller API
+  /// Expose the [AwaitableSink] behaviour, which provides a smaller API
   /// surface.
-  OffsetIteratorSink<T> get sink => this;
+  AwaitableSink<T> get sink => this;
+
+  /// Expose the [DrainableSink] behaviour, which provides a smaller API
+  /// surface.
+  DrainableSink<T> get drainableSink => this;
 
   @override
   FutureOr<void> add(T data) => _add(_Data(data));
@@ -132,7 +140,7 @@ class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
   }
 
   @override
-  Future<void> drain(Future<void> Function(OffsetIteratorSink<T> sink) task) =>
+  Future<void> drain(Future<void> Function(AwaitableSink<T> sink) task) =>
       Future.wait([
         iterator.run(),
         task(this),
@@ -202,7 +210,7 @@ class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
 
 extension PipeExtension<T> on OffsetIterator<T> {
   Future<void> pipe(
-    OffsetIteratorSink<T> sink, {
+    AwaitableSink<T> sink, {
     int? startOffset,
   }) async {
     var offset = startOffset ?? this.offset;
