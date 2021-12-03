@@ -350,13 +350,4 @@ void main() {
       expect(() => i.pull(), throwsA('fail'));
     });
   });
-
-  group('.drain', () {
-    test('future completes when everything has been pulled', () async {
-      final i = OffsetIterator.range(0, end: 5);
-      await i.toList();
-      await i.drain();
-      assert(true);
-    });
-  });
 }
