@@ -17,6 +17,8 @@ abstract class OffsetIteratorSink<T> implements EventSink<T> {
   FutureOr<void> close([Option<T> data]);
 
   Future<void> flush();
+
+  OffsetIterator<dynamic> get iterator;
 }
 
 abstract class _Item<T> {
@@ -62,6 +64,7 @@ class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
   }
 
   /// The [OffsetIterator] that is being controlled.
+  @override
   late final OffsetIterator<dynamic> iterator;
 
   /// The internal state of the controller.
