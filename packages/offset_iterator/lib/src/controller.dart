@@ -142,7 +142,7 @@ class OffsetIteratorController<T> implements DrainableSink<T> {
   @override
   Future<void> drain(Future<void> Function(AwaitableSink<T> sink) task) =>
       Future.wait([
-        iterator.run(),
+        Future.value(iterator.run()),
         task(this),
       ], eagerError: true);
 

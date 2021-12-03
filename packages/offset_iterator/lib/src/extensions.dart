@@ -441,10 +441,12 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
 }
 
 extension RunExtension on OffsetIterator {
-  Future<void> run() async {
+  FutureOr<void> run() {
     while (!drained) {
       final futureOr = pull();
-      if (futureOr is Future) await futureOr;
+      if (futureOr is Future) {
+        return (futureOr as Future).then((_) => run());
+      }
     }
   }
 }
