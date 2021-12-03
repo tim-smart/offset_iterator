@@ -15,6 +15,8 @@ abstract class OffsetIteratorSink<T> implements EventSink<T> {
 
   @override
   FutureOr<void> close([Option<T> data]);
+
+  Future<void> flush();
 }
 
 abstract class _Item<T> {
@@ -43,15 +45,24 @@ enum OffsetIteratorControllerState {
   closed,
 }
 
+/// Optional transformation to apply to the wrapper [OffsetIterator]
+typedef OffsetIteratorControllerTransform<T> = OffsetIterator<dynamic> Function(
+  OffsetIterator<T>,
+);
+
 /// [OffsetIteratorController] implements sink behaviour and wraps an
 /// [OffsetIterator].
 class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
   OffsetIteratorController({
     this.closeOnError = true,
-  });
+    OffsetIteratorControllerTransform<T>? transform,
+  }) {
+    final iter = OffsetIterator<T>(init: () {}, process: _process);
+    iterator = transform != null ? transform(iter) : iter;
+  }
 
   /// The [OffsetIterator] that is being controlled.
-  late final iterator = OffsetIterator<T>(init: () {}, process: _process);
+  late final OffsetIterator<dynamic> iterator;
 
   /// The internal state of the controller.
   OffsetIteratorControllerState get state => _state;
@@ -117,6 +128,10 @@ class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
     return item.completer.isCompleted ? null : item.completer.future;
   }
 
+  /// Returns a future that waits for the internal [OffsetIterator] to drain.
+  @override
+  Future<void> flush() => iterator.drain();
+
   // ==== Below is the internal [OffsetIterator] implementation
 
   FutureOr<OffsetIteratorState<T>> _process(dynamic acc) {
@@ -176,5 +191,37 @@ class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
     }
 
     return item;
+  }
+}
+
+extension PipeExtension<T> on OffsetIterator<T> {
+  Future<void> pipe(
+    OffsetIteratorSink<T> sink, {
+    int? startOffset,
+  }) async {
+    var offset = startOffset ?? this.offset;
+    if (offset < earliestAvailableOffset) {
+      offset = earliestAvailableOffset - 1;
+    }
+
+    while (hasMore(offset)) {
+      try {
+        final itemFuture = pull(offset);
+        final item = itemFuture is Future ? await itemFuture : itemFuture;
+
+        if (item is Some) {
+          final addFuture = sink.add((item as Some).value);
+          if (addFuture is Future) await addFuture;
+        }
+      } catch (err) {
+        sink.addError(err);
+        return await sink.flush();
+      }
+
+      offset++;
+    }
+
+    sink.close();
+    await sink.flush();
   }
 }

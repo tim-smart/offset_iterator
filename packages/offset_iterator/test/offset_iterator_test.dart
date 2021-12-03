@@ -222,7 +222,7 @@ void main() {
       );
       final values = <bool>[];
       i.addListener(() {
-        values.add(i.hasMore());
+        values.add(!i.drained);
       });
       expect(await i.toList(), equals([0, 1]));
       await i.pull(); // Make sure of no duplicate calls
@@ -348,6 +348,15 @@ void main() {
       );
 
       expect(() => i.pull(), throwsA('fail'));
+    });
+  });
+
+  group('.drain', () {
+    test('future completes when everything has been pulled', () async {
+      final i = OffsetIterator.range(0, end: 5);
+      await i.toList();
+      await i.drain();
+      assert(true);
     });
   });
 }

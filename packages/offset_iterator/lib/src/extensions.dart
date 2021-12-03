@@ -354,7 +354,7 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
         if (child != null) {
           final itemFuture = child.pull();
           final item = itemFuture is Future ? await itemFuture : itemFuture;
-          final childHasMore = child.hasMore();
+          final childHasMore = !child.drained;
 
           return OffsetIteratorState(
             acc: tuple2(offset, childHasMore ? child : null),
@@ -428,7 +428,7 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
 
 extension RunExtension on OffsetIterator {
   Future<void> run() async {
-    while (hasMore()) {
+    while (!drained) {
       final futureOr = pull();
       if (futureOr is Future) await futureOr;
     }
