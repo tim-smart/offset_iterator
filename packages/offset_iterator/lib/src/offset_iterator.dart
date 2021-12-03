@@ -59,7 +59,14 @@ class OffsetIterator<T> {
   /// The internal status
   OffsetIteratorStatus get status => _status;
   var _status = OffsetIteratorStatus.unseeded;
-  Future<OffsetIteratorState<T>>? _processFuture;
+
+  bool _processing = false;
+  Completer<void>? _processingCompleter;
+  Future<void> get _processingFuture {
+    if (_processingCompleter != null) return _processingCompleter!.future;
+    _processingCompleter = Completer.sync();
+    return _processingCompleter!.future;
+  }
 
   Option<T> _value = const None();
 
@@ -114,13 +121,15 @@ class OffsetIterator<T> {
   /// Returns `true` if all the data has been pulled.
   bool get drained => buffer.isEmpty && !state.hasMore;
 
-  final _drainedCompleter = Completer<void>.sync();
+  final _drainedCompleter = Completer<void>();
 
   void _maybeSeedValue() {
     if (_status != OffsetIteratorStatus.unseeded) return;
     _value = Option.fromNullable(_seed?.call());
     _status = OffsetIteratorStatus.seeded;
   }
+
+  // ==== Pull chain starts here
 
   /// Pull the next item. If `currentOffset` is not provided, it will use the
   /// latest head offset.
@@ -159,37 +168,52 @@ class OffsetIterator<T> {
     if (buffer.isNotEmpty) return _nextItem(buffer.removeFirst());
     if (state.hasMore == false) return const None();
 
-    if (_processFuture != null) {
-      return (_processFuture as Future).then((_) => pull(offset));
+    if (_processing) {
+      return _processingFuture.then((_) => pull(offset));
     }
 
+    _processing = true;
+    try {
+      final futureOr = _doProcessing(offset);
+      if (futureOr is Future) {
+        return (futureOr as Future<Option<T>>).whenComplete(_releaseProcessing);
+      }
+      _releaseProcessing();
+      return futureOr;
+    } catch (err) {
+      _releaseProcessing();
+      rethrow;
+    }
+  }
+
+  FutureOr<Option<T>> _doProcessing(int offset) {
     final futureOr = _process(state.acc);
 
     if (futureOr is Future) {
-      _processFuture = futureOr as Future<OffsetIteratorState<T>>;
-
-      return _processFuture!.whenComplete(() {
-        _processFuture = null;
-      }).then<Option<T>>((nextState) {
-        if (state.hasMore == false) return const None();
-        return _handleNextState(offset, nextState);
-      });
+      return (futureOr as Future<OffsetIteratorState<T>>)
+          .then(_handleNextState);
     }
 
-    return _handleNextState(offset, futureOr);
+    return _handleNextState(futureOr);
   }
 
-  FutureOr<Option<T>> _handleNextState(
-    int offset,
-    OffsetIteratorState<T> nextState,
-  ) {
+  void _releaseProcessing() {
+    _processing = false;
+    if (_processingCompleter != null) {
+      final completer = _processingCompleter!;
+      _processingCompleter = null;
+      completer.complete();
+    }
+  }
+
+  FutureOr<Option<T>> _handleNextState(OffsetIteratorState<T> nextState) {
     state = nextState;
 
     if (nextState.hasMore == false) {
-      final cancelFuture = cancel();
-      return cancelFuture is Future
-          ? cancelFuture.then((_) => _processNextState())
-          : _processNextState();
+      final cancelFuture = _cancel(true);
+      if (cancelFuture is Future) {
+        return cancelFuture.then((_) => _processNextState());
+      }
     }
 
     return _processNextState();
@@ -202,9 +226,10 @@ class OffsetIterator<T> {
     if (chunkLength == 0) {
       if (state.hasMore == false) {
         _notifyListeners();
+        return const None();
       }
 
-      return pull(offset);
+      return _doProcessing(offset);
     } else if (chunkLength == 1) {
       return _nextItem(state.chunk.first);
     }
@@ -215,7 +240,7 @@ class OffsetIterator<T> {
   }
 
   Option<T> _nextItem(T item) {
-    if (retention != 0 && _value is Some) {
+    if (retention != 0 && _value.isSome()) {
       log.add((_value as Some).value);
 
       while (retention > -1 && log.length > retention) {
@@ -223,13 +248,16 @@ class OffsetIterator<T> {
       }
     }
 
-    _value = Some(item);
-    _offset = _offset + 1;
+    final value = Some(item);
+    _value = value;
+    _offset++;
 
     _notifyListeners();
 
-    return _value;
+    return value;
   }
+
+  // ==== Pull chain finishes here
 
   Option<T> valueAt(int offset) {
     if (offset == _offset) {
@@ -246,15 +274,18 @@ class OffsetIterator<T> {
   }
 
   /// Prevents any new items from being added to the buffer, and
-  FutureOr<void> cancel() {
+  FutureOr<void> cancel() => _cancel(false);
+
+  FutureOr<void> _cancel(bool force) {
     if (_status == OffsetIteratorStatus.completed) return null;
     final status = _status;
     _status = OffsetIteratorStatus.completed;
 
     if (status != OffsetIteratorStatus.active) return _complete();
 
-    if (_processFuture != null) {
-      return _processFuture!.then((_) {}).whenComplete(_cleanupAndComplete);
+    if (!force && _processing) {
+      // ignore: void_checks
+      return _processingFuture.whenComplete(_cleanupAndComplete);
     }
 
     return _cleanupAndComplete();
@@ -307,9 +338,7 @@ class OffsetIterator<T> {
   }
 
   void _notifyListeners() {
-    if (drained) {
-      Future.microtask(() => _drainedCompleter.complete());
-    }
+    if (drained) _drainedCompleter.complete();
 
     if (_listeners.isEmpty) return;
     for (final listener in _listeners) {

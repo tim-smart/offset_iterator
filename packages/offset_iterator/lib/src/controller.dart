@@ -7,18 +7,36 @@ import 'package:offset_iterator/offset_iterator.dart';
 /// [OffsetIteratorSink] is an [EventSink] that allows you to wait for the data
 /// to be consumed.
 abstract class OffsetIteratorSink<T> implements EventSink<T> {
+  /// Add data to the sink.
+  ///
+  /// Will return immediately if the data is ready for consumption.
+  /// Otherwise it will return a [Future] that will resolve when the data has
+  /// been consumed.
   @override
   FutureOr<void> add(T data);
 
+  /// Add an error to the sink.
+  ///
+  /// Like [add], it will return immediately if the error is handled straight
+  /// away. Otherwise will return a [Future] that will resolve when the error
+  /// has been handled.
   @override
   FutureOr<void> addError(Object error, [StackTrace? stackTrace]);
 
+  /// Close the sink
+  ///
+  /// Has an optional `data` parameter if you want to close the [OffsetIterator]
+  /// with a final item.
+  ///
+  /// Works the same as [add], except the controller will be closed and no longer
+  /// accept new data.
   @override
   FutureOr<void> close([Option<T> data]);
 
-  Future<void> flush();
-
-  OffsetIterator<dynamic> get iterator;
+  /// Start draining the sink.
+  ///
+  /// The `task` function is where you can call [add], [addError] and [close].
+  Future<void> drain(Future<void> Function(OffsetIteratorSink<T> sink) task);
 }
 
 abstract class _Item<T> {
@@ -64,7 +82,6 @@ class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
   }
 
   /// The [OffsetIterator] that is being controlled.
-  @override
   late final OffsetIterator<dynamic> iterator;
 
   /// The internal state of the controller.
@@ -82,30 +99,13 @@ class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
   /// surface.
   OffsetIteratorSink<T> get sink => this;
 
-  /// Add data to the sink.
-  ///
-  /// Will return immediately if the data is ready for consumption.
-  /// Otherwise it will return a [Future] that will resolve when the data has
-  /// been consumed.
   @override
   FutureOr<void> add(T data) => _add(_Data(data));
 
-  /// Add an error to the sink.
-  ///
-  /// Like [add], it will return immediately if the error is handled straight
-  /// away. Otherwise will return a [Future] that will resolve when the error
-  /// has been handled.
   @override
   FutureOr<void> addError(Object error, [StackTrace? stackTrace]) =>
       _add(_Error(error, stackTrace ?? AsyncError.defaultStackTrace(error)));
 
-  /// Close the sink
-  ///
-  /// Has an optional `data` parameter if you want to close the [OffsetIterator]
-  /// with a final item.
-  ///
-  /// Works the same as [add], except the controller will be closed and no longer
-  /// accept new data.
   @override
   FutureOr<void> close([Option<T> data = const None()]) => _add(_Close(data));
 
@@ -131,9 +131,12 @@ class OffsetIteratorController<T> implements OffsetIteratorSink<T> {
     return item.completer.isCompleted ? null : item.completer.future;
   }
 
-  /// Returns a future that waits for the internal [OffsetIterator] to drain.
   @override
-  Future<void> flush() => iterator.drain();
+  Future<void> drain(Future<void> Function(OffsetIteratorSink<T> sink) task) =>
+      Future.wait([
+        iterator.run(),
+        task(this),
+      ], eagerError: true);
 
   // ==== Below is the internal [OffsetIterator] implementation
 
@@ -216,15 +219,13 @@ extension PipeExtension<T> on OffsetIterator<T> {
           final addFuture = sink.add((item as Some).value);
           if (addFuture is Future) await addFuture;
         }
-      } catch (err) {
-        sink.addError(err);
-        return await sink.flush();
-      }
 
-      offset++;
+        offset++;
+      } catch (err) {
+        await sink.addError(err);
+      }
     }
 
-    sink.close();
-    await sink.flush();
+    await sink.close();
   }
 }

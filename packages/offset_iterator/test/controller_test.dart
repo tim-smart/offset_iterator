@@ -24,10 +24,8 @@ void main() {
       sink.add(1);
       sink.add(2);
       sink.add(3);
-      await sink.close(some(4));
+      sink.close(some(4));
 
-      await sink.flush();
-      expect(sink.iterator.drained, true);
       expect(await sink.iterator.toList(startOffset: 0), [2, 4, 6, 8]);
     });
 
@@ -46,10 +44,8 @@ void main() {
     test('sends everything to the sink', () async {
       final i = OffsetIterator.range(1, end: 4);
       final sink = multiplierController();
-      sink.iterator.run();
 
-      await i.pipe(sink);
-      expect(sink.iterator.drained, true);
+      await sink.drain(i.pipe);
       expect(await sink.iterator.toList(startOffset: 0), [2, 4, 6, 8]);
     });
   });

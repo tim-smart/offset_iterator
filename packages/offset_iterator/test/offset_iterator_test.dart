@@ -69,7 +69,7 @@ void main() {
     test('it correctly drains the stream', () async {
       final i = OffsetIterator.fromStream(Stream.fromIterable([1, 2, 3, 4, 5]));
       expect(await i.toList(), equals([1, 2, 3, 4, 5]));
-    });
+    }, timeout: const Timeout(Duration(minutes: 5)));
 
     test('sets the seed if a ValueStream is provided', () async {
       final i = OffsetIterator.fromStream(

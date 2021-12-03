@@ -28,14 +28,11 @@ OffsetIteratorSink<List<int>> writeFile(String path) {
 void main() async {
   final file = writeFile('/tmp/offset-iterator.txt');
 
-  // Pipe hello world to the file
-  OffsetIterator.fromIterable(
-    ['Hello', ' ', 'World!'].map(utf8.encode),
-  ).pipe(file);
-
-  // Start the pipeline
   try {
-    await file.iterator.run();
+    // Pipe hello world to the file
+    await file.drain(OffsetIterator.fromIterable(
+      ['Hello', ' ', 'World!'].map(utf8.encode),
+    ).pipe);
   } catch (err) {
     print("error: $err");
   }
