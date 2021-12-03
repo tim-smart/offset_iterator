@@ -5,34 +5,51 @@ import 'package:offset_iterator/offset_iterator.dart';
 import 'package:riverpod/riverpod.dart';
 
 OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
-  ProviderRef<OffsetIterator<T>> ref, {
-  int initialDemand = 1,
-}) =>
+  ProviderRef<OffsetIterator<T>> ref,
+) =>
     (iterator) {
-      final initial =
-          OffsetIterator.range(1, end: initialDemand).asyncMap((_) async {
-        await iterator.pull();
-      });
-
       ref.onDispose(iterator.cancel);
-      ref.onDispose(initial.cancel);
-
-      initial.run();
-
       return iterator;
     };
 
-Option<T> Function(
+AsyncValue<T> Function(
   OffsetIterator<T> iterator,
-) iteratorValueProvider<T>(ProviderRef<Option<T>> ref) => (iterator) {
+) iteratorValueProvider<T>(
+  ProviderRef<AsyncValue<T>> ref, {
+  int? startOffset,
+  int initialDemand = 1,
+}) =>
+    (iterator) {
+      // Handle initialDemand
+      var offset = startOffset ?? iterator.offset;
+      var disposed = false;
+      ref.onDispose(() => disposed = true);
+
+      Future<void> doPull(int remaining) {
+        if (disposed || remaining == 0) return Future.sync(() {});
+
+        return Future.value(iterator.pull(offset)).then((_) {
+          offset++;
+          return doPull(remaining - 1);
+        }).catchError((err, stack) {
+          ref.state = AsyncValue.error(err, stackTrace: stack);
+        });
+      }
+
+      doPull(initialDemand);
+
+      // Handle value changes
       void onChange() {
-        ref.state = iterator.value;
+        iterator.value.map((v) => ref.state = AsyncValue.data(v));
       }
 
       iterator.addListener(onChange);
       ref.onDispose(() => iterator.removeListener(onChange));
 
-      return iterator.value;
+      return iterator.value.match(
+        (v) => AsyncValue.data(v),
+        () => const AsyncValue.loading(),
+      );
     };
 
 bool Function(
