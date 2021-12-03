@@ -38,10 +38,10 @@ Option<T> Function(
 bool Function(
   OffsetIterator<T> iterator,
 ) iteratorHasMoreProvider<T>(ProviderRef<bool> ref) => (iterator) {
-      if (!iterator.hasMore()) return false;
+      if (iterator.drained) return false;
 
       void onChange() {
-        if (iterator.hasMore()) return;
+        if (!iterator.drained) return;
         ref.state = false;
       }
 
