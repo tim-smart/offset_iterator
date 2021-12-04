@@ -397,7 +397,6 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
 
         return OffsetIteratorState(
           acc: tuple2(offset, null),
-          chunk: [],
           hasMore: parent.hasMore(offset),
         );
       },

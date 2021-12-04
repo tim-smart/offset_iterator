@@ -6,8 +6,8 @@ import 'package:fpdart/fpdart.dart';
 class OffsetIteratorState<T> {
   const OffsetIteratorState({
     required this.acc,
-    required this.chunk,
-    required this.hasMore,
+    this.chunk = const [],
+    this.hasMore = true,
     this.error,
     this.stackTrace,
   });
@@ -55,11 +55,7 @@ class OffsetIterator<T> {
   final bool cancelOnError;
 
   /// The latest state from the `process` function.
-  var state = OffsetIteratorState<T>(
-    acc: null,
-    chunk: [],
-    hasMore: true,
-  );
+  var state = OffsetIteratorState<T>(acc: null);
 
   /// The internal status
   OffsetIteratorStatus get status => _status;
@@ -154,14 +150,8 @@ class OffsetIterator<T> {
   }
 
   FutureOr<Option<T>> _handleInit(int offset, dynamic acc) {
-    state = OffsetIteratorState(
-      acc: acc,
-      chunk: [],
-      hasMore: true,
-    );
-
+    state = OffsetIteratorState(acc: acc);
     _status = OffsetIteratorStatus.active;
-
     return _handleOffsetRequest(offset);
   }
 
@@ -197,7 +187,6 @@ class OffsetIterator<T> {
         return (futureOr as Future<OffsetIteratorState<T>>)
             .catchError((err, stack) => OffsetIteratorState<T>(
                   acc: state.acc,
-                  chunk: [],
                   hasMore: state.hasMore,
                   error: err,
                   stackTrace: stack,
@@ -209,7 +198,6 @@ class OffsetIterator<T> {
     } catch (err, stack) {
       return _handleNextState(OffsetIteratorState(
         acc: state.acc,
-        chunk: [],
         hasMore: state.hasMore,
         error: err,
         stackTrace: stack,
@@ -423,7 +411,7 @@ class OffsetIterator<T> {
         init: () {},
         process: (acc) => OffsetIteratorState(
           acc: null,
-          chunk: iterable.toList(),
+          chunk: iterable,
           hasMore: false,
         ),
         seed: seed,
