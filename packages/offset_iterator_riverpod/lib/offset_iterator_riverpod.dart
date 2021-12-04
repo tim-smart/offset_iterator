@@ -12,10 +12,10 @@ OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
       return iterator;
     };
 
-AsyncValue<T> Function(
+Tuple2<AsyncValue<T>, Future<void> Function()> Function(
   OffsetIterator<T> iterator,
 ) iteratorValueProvider<T>(
-  ProviderRef<AsyncValue<T>> ref, {
+  ProviderRef<Tuple2<AsyncValue<T>, Future<void> Function()>> ref, {
   int? startOffset,
   int initialDemand = 1,
 }) =>
@@ -32,23 +32,31 @@ AsyncValue<T> Function(
           offset++;
           return doPull(remaining - 1);
         }).catchError((err, stack) {
-          ref.state = AsyncValue.error(err, stackTrace: stack);
+          ref.state = tuple2(
+            AsyncValue.error(err, stackTrace: stack),
+            () => doPull(1),
+          );
         });
       }
+
+      Future<void> pull() => doPull(1);
 
       doPull(initialDemand);
 
       // Handle value changes
       void onChange() {
-        iterator.value.map((v) => ref.state = AsyncValue.data(v));
+        iterator.value.map((v) => ref.state = tuple2(AsyncValue.data(v), pull));
       }
 
       iterator.addListener(onChange);
       ref.onDispose(() => iterator.removeListener(onChange));
 
-      return iterator.value.match(
-        (v) => AsyncValue.data(v),
-        () => const AsyncValue.loading(),
+      return tuple2(
+        iterator.value.match(
+          (v) => AsyncValue.data(v),
+          () => const AsyncValue.loading(),
+        ),
+        pull,
       );
     };
 
