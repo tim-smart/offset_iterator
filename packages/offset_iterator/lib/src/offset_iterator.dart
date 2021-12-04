@@ -38,6 +38,7 @@ class OffsetIterator<T> {
     CleanupCallback? cleanup,
     SeedCallback? seed,
     this.retention = 0,
+    this.cancelOnError = true,
   })  : _init = init,
         _process = process,
         _seed = seed {
@@ -48,6 +49,9 @@ class OffsetIterator<T> {
   final ProcessCallback<T> _process;
   late final CleanupCallback _cleanup;
   final SeedCallback? _seed;
+
+  /// If `true`, [cancel] will be called on error.
+  final bool cancelOnError;
 
   /// The latest state from the `process` function.
   var state = OffsetIteratorState<T>(
@@ -185,14 +189,31 @@ class OffsetIterator<T> {
   }
 
   FutureOr<Option<T>> _doProcessing(int offset) {
-    final futureOr = _process(state.acc);
+    try {
+      final futureOr = _process(state.acc);
 
-    if (futureOr is Future) {
-      return (futureOr as Future<OffsetIteratorState<T>>)
-          .then(_handleNextState);
+      if (futureOr is Future) {
+        return (futureOr as Future<OffsetIteratorState<T>>)
+            .catchError((err, stack) => OffsetIteratorState(
+              acc: state.acc,
+              chunk: [],
+              hasMore: state.hasMore,
+              error: err,
+              stackTrace: stack,
+            ))
+            .then(_handleNextState);
+      }
+
+      return _handleNextState(futureOr);
+    } catch (err, stack) {
+      return _handleNextState(OffsetIteratorState(
+        acc: state.acc,
+        chunk: [],
+        hasMore: state.hasMore,
+        error: err,
+        stackTrace: stack,
+      ));
     }
-
-    return _handleNextState(futureOr);
   }
 
   void _releaseProcessing() {
@@ -207,7 +228,7 @@ class OffsetIterator<T> {
   FutureOr<Option<T>> _handleNextState(OffsetIteratorState<T> nextState) {
     state = nextState;
 
-    if (nextState.hasMore == false) {
+    if (nextState.hasMore == false || (cancelOnError && state.error != null)) {
       final cancelFuture = _cancel(true);
       if (cancelFuture is Future) {
         return cancelFuture.then((_) => _processNextState());
