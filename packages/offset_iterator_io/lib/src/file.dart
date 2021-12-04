@@ -47,13 +47,18 @@ extension WriteToFile on OffsetIterator<List<int>> {
         if (offset < earliest) offset = earliest;
 
         final chunk = await parent.pull(offset);
-        await chunk.match(file.writeFrom, () {});
+
+        // Prefetch next chunk
         final newOffset = offset + 1;
+        final hasMore = parent.hasMore(newOffset);
+        if (hasMore && newOffset == parent.offset) parent.pull(newOffset);
+
+        await chunk.match(file.writeFrom, () {});
 
         return OffsetIteratorState(
           acc: tuple2(file, newOffset),
           chunk: chunk.match((c) => [c.length], () => []),
-          hasMore: parent.hasMore(newOffset),
+          hasMore: hasMore,
         );
       },
       cleanup: (acc) => acc.first.close(),
