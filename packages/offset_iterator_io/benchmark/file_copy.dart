@@ -8,7 +8,7 @@ void main(List<String> args) async {
   final file = File(args[0]);
   final destination = File('test/tmp/file_copy_benchmark');
 
-  final totalBytes = file.statSync().size;
+  final megabytes = (file.statSync().size / 1024 / 1024).round();
 
   const settings = BenchmarkSettings(
     minimumRunTime: Duration(seconds: 10),
@@ -18,12 +18,12 @@ void main(List<String> args) async {
     await fileIterator(file).writeToFile(destination).run();
     await destination.delete();
   }, settings: settings))
-      .report(units: totalBytes);
+      .report(units: megabytes);
 
   (await asyncBenchmark('File.openWrite', () async {
     final sink = destination.openWrite();
     await file.openRead().pipe(sink);
     await destination.delete();
   }, settings: settings))
-      .report(units: totalBytes);
+      .report(units: megabytes);
 }
