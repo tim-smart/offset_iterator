@@ -340,6 +340,24 @@ extension ToListExtension<T> on OffsetIterator<T> {
       }, startOffset: startOffset);
 }
 
+extension IntExtension on OffsetIterator<int> {
+  /// Calulates the sum of all the emitted numbers.
+  Future<int> sum({int? startOffset}) => fold(
+        0,
+        (acc, item) => acc + item,
+        startOffset: startOffset,
+      );
+}
+
+extension DoubleExtension on OffsetIterator<double> {
+  /// Calulates the sum of all the emitted numbers.
+  Future<double> sum({int? startOffset}) => fold(
+        0,
+        (acc, item) => acc + item,
+        startOffset: startOffset,
+      );
+}
+
 extension FlatMapExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> flatMap<R>(
     OffsetIterator<R> Function(T item) pred, {

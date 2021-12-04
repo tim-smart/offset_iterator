@@ -301,6 +301,19 @@ void main() {
     });
   });
 
+  group('sum', () {
+    test('works for int', () async {
+      final result = await OffsetIterator.fromIterable([1, 2, 3, 4, 5]).sum();
+      expect(result, equals(15));
+    });
+
+    test('works for double', () async {
+      final result =
+          await OffsetIterator.fromIterable(<double>[1.0, 2, 3, 4, 5]).sum();
+      expect(result, equals(15));
+    });
+  });
+
   group('flatMap', () {
     test('flattens the inner OffsetIterators', () async {
       final i = OffsetIterator.fromIterable([1, 2]).flatMap(
