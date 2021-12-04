@@ -46,7 +46,8 @@ extension WriteToFile on OffsetIterator<List<int>> {
         final earliest = parent.earliestAvailableOffset - 1;
         if (offset < earliest) offset = earliest;
 
-        final chunk = await parent.pull(offset);
+        final futureOr = parent.pull(offset);
+        final chunk = futureOr is Future ? await futureOr : futureOr;
 
         // Prefetch next chunk
         final newOffset = offset + 1;
