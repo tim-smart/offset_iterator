@@ -195,13 +195,13 @@ class OffsetIterator<T> {
 
       if (futureOr is Future) {
         return (futureOr as Future<OffsetIteratorState<T>>)
-            .catchError((err, stack) => OffsetIteratorState(
-              acc: state.acc,
-              chunk: [],
-              hasMore: state.hasMore,
-              error: err,
-              stackTrace: stack,
-            ))
+            .catchError((err, stack) => OffsetIteratorState<T>(
+                  acc: state.acc,
+                  chunk: [],
+                  hasMore: state.hasMore,
+                  error: err,
+                  stackTrace: stack,
+                ))
             .then(_handleNextState);
       }
 

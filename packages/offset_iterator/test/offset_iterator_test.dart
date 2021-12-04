@@ -350,4 +350,45 @@ void main() {
       expect(() => i.pull(), throwsA('fail'));
     });
   });
+
+  group('cancelOnError', () {
+    test('is set to true if cleanup is provided', () async {
+      final i = OffsetIterator(
+        init: () {},
+        process: (_) => const OffsetIteratorState(
+          acc: null,
+          chunk: [],
+          hasMore: true,
+          error: 'fail',
+        ),
+        cleanup: (_) {},
+      );
+
+      expect(i.cancelOnError, true);
+
+      expect(i.pull, throwsA('fail'));
+      expect(i.drained, true);
+      expect(i.status, OffsetIteratorStatus.completed);
+      expect(i.state.error, 'fail');
+    });
+
+    test('it defaults to false', () async {
+      final i = OffsetIterator(
+        init: () {},
+        process: (_) => const OffsetIteratorState(
+          acc: null,
+          chunk: [],
+          hasMore: true,
+          error: 'fail',
+        ),
+      );
+
+      expect(i.cancelOnError, false);
+
+      expect(i.pull, throwsA('fail'));
+      expect(i.drained, false);
+      expect(i.status, OffsetIteratorStatus.active);
+      expect(i.state.error, 'fail');
+    });
+  });
 }
