@@ -274,17 +274,12 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
     return OffsetIterator(
       seed: parent.generateSeed(),
       retention: retention ?? parent.retention,
-      init: () => tuple2(parent.offset, maxRetries),
-      process: (acc) async {
-        final offset = acc.first as int;
-        var remainingRetries = acc.second as int;
-
+      init: () => maxRetries,
+      process: (remainingRetries) async {
         List<T>? chunk;
-        int newOffset = offset;
 
         try {
-          final item = await parent.pull(offset);
-          newOffset = offset + 1;
+          final item = await parent.pull();
           remainingRetries = maxRetries;
           chunk = item.match((v) => [v], () => []);
         } catch (err, stack) {
@@ -293,9 +288,32 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
         }
 
         return OffsetIteratorState(
-          acc: tuple2(newOffset, remainingRetries),
+          acc:  remainingRetries,
           chunk: chunk ?? [],
-          hasMore: remainingRetries == 0 ? false : parent.hasMore(newOffset),
+          hasMore: remainingRetries == 0 ? false : !parent.drained,
+        );
+      },
+    );
+  }
+}
+extension PrefetchExtension<T> on OffsetIterator<T> {
+  OffsetIterator<T> prefetch() {
+    final parent = this;
+
+    return OffsetIterator(
+      seed: parent.generateSeed(),
+      init: () {},
+      process: (acc) async {
+        final futureOr = parent.pull();
+        final item = futureOr is Future ? await futureOr : futureOr;
+        final hasMore = !parent.drained;
+
+        if (hasMore) parent.pull();
+
+        return OffsetIteratorState(
+          acc: null,
+          chunk: item.match((v) => [v], () => []),
+          hasMore: !parent.drained,
         );
       },
     );
@@ -306,19 +324,13 @@ extension FoldExtension<T> on OffsetIterator<T> {
   Future<R> fold<R>(
     R initialValue,
     R Function(R acc, T item) reducer, {
-    int? startOffset,
   }) async {
     var acc = initialValue;
-    var offset = startOffset ?? this.offset;
 
-    final earliest = earliestAvailableOffset - 1;
-    if (offset < earliest) offset = earliest;
-
-    while (hasMore(offset)) {
-      final resultFuture = pull(offset);
+    while (!drained) {
+      final resultFuture = pull();
       final result = resultFuture is Future ? await resultFuture : resultFuture;
       acc = result.map((v) => reducer(acc, v)).getOrElse(() => acc);
-      offset = offset + 1;
     }
 
     return acc;
@@ -334,27 +346,25 @@ extension ToIListExtension<T> on OffsetIterator<T> {
 }
 
 extension ToListExtension<T> on OffsetIterator<T> {
-  Future<List<T>> toList({int? startOffset}) => fold([], (acc, item) {
+  Future<List<T>> toList() => fold([], (acc, item) {
         acc.add(item);
         return acc;
-      }, startOffset: startOffset);
+      });
 }
 
 extension IntExtension on OffsetIterator<int> {
-  /// Calulates the sum of all the emitted numbers.
-  Future<int> sum({int? startOffset}) => fold(
+  /// Calculates the sum of all the emitted numbers.
+  Future<int> sum() => fold(
         0,
         (acc, item) => acc + item,
-        startOffset: startOffset,
       );
 }
 
 extension DoubleExtension on OffsetIterator<double> {
-  /// Calulates the sum of all the emitted numbers.
-  Future<double> sum({int? startOffset}) => fold(
+  /// Calculates the sum of all the emitted numbers.
+  Future<double> sum() => fold(
         0,
         (acc, item) => acc + item,
-        startOffset: startOffset,
       );
 }
 
@@ -363,24 +373,18 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
     OffsetIterator<R> Function(T item) pred, {
     int? retention,
     SeedCallback<R>? seed,
-    int? startOffset,
   }) {
     final parent = this;
 
     return OffsetIterator(
-      init: () => tuple2(startOffset ?? parent.offset, null),
+      init: () => null,
       process: (acc) async {
-        var offset = acc.first as int;
-        var child = acc.second as OffsetIterator<R>?;
+        var child = acc as OffsetIterator<R>?;
 
         if (child == null) {
-          final earliest = parent.earliestAvailableOffset - 1;
-          if (offset < earliest) offset = earliest;
-
           final itemFuture = parent.pull(offset);
           final item = itemFuture is Future ? await itemFuture : itemFuture;
           child = item.map(pred).toNullable();
-          offset = offset + 1;
         }
 
         if (child != null) {
@@ -389,15 +393,15 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
           final childHasMore = !child.drained;
 
           return OffsetIteratorState(
-            acc: tuple2(offset, childHasMore ? child : null),
+            acc: childHasMore ? child : null,
             chunk: item.match((v) => [v], () => []),
-            hasMore: childHasMore || parent.hasMore(offset),
+            hasMore: childHasMore || parent.hasMore(),
           );
         }
 
         return OffsetIteratorState(
-          acc: tuple2(offset, null),
-          hasMore: parent.hasMore(offset),
+          acc: offset,
+          hasMore: parent.hasMore(),
         );
       },
       seed: seed,
@@ -411,48 +415,40 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
     FutureOr<List<R>?> Function(T item) predicate, {
     required int concurrency,
     SeedCallback<R>? seed,
-    int? retention,
-    int? startOffset,
+    int retention = 0,
   }) {
     final parent = this;
     final queue = Queue<FutureOr<List<R>?>>();
 
-    Future<int> fillQueue(int offset) async {
-      while (queue.length < concurrency && parent.hasMore(offset)) {
-        final earliest = parent.earliestAvailableOffset - 1;
-        if (offset < earliest) offset = earliest;
-
-        final itemFuture = parent.pull(offset);
+    Future<int> fillQueue() async {
+      while (queue.length < concurrency && parent.hasMore()) {
+        final itemFuture = parent.pull();
         final item = itemFuture is Future ? await itemFuture : itemFuture;
 
         item.map((item) {
           queue.add(predicate(item));
         });
-
-        offset = offset + 1;
       }
-
-      return offset;
     }
 
     return OffsetIterator(
-      init: () => startOffset ?? parent.offset,
-      process: (offset) async {
+      init: () {},
+      process: (acc) async {
         if (queue.isEmpty) {
-          offset = await fillQueue(offset);
+          await fillQueue();
         }
 
         final chunk = await queue.removeFirst();
-        offset = await fillQueue(offset);
+        await fillQueue();
 
         return OffsetIteratorState(
-          acc: offset,
+          acc: null,
           chunk: chunk ?? [],
           hasMore: chunk != null && queue.isNotEmpty,
         );
       },
       seed: seed,
-      retention: retention ?? parent.retention,
+      retention: retention,
     );
   }
 }
