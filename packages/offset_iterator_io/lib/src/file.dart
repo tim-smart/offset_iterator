@@ -43,9 +43,6 @@ extension WriteToFile on OffsetIterator<List<int>> {
         final file = acc.first as RandomAccessFile;
         var offset = acc.second as int;
 
-        final earliest = parent.earliestAvailableOffset - 1;
-        if (offset < earliest) offset = earliest;
-
         final futureOr = parent.pull(offset);
         final chunk = futureOr is Future ? await futureOr : futureOr;
 
@@ -54,6 +51,7 @@ extension WriteToFile on OffsetIterator<List<int>> {
         final hasMore = parent.hasMore(newOffset);
         if (hasMore && newOffset == parent.offset) parent.pull(newOffset);
 
+        // Write chunk
         await chunk.match(file.writeFrom, () {});
 
         return OffsetIteratorState(
