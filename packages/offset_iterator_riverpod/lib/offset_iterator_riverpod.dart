@@ -19,6 +19,17 @@ class OffsetIteratorValue<T> {
   final bool hasMore;
 
   Future<void> pull() => _pull(1);
+
+  @override
+  bool operator ==(Object other) {
+    return runtimeType == other.runtimeType &&
+        other is OffsetIteratorValue<T> &&
+        other.value == value &&
+        other.hasMore == hasMore;
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, value, hasMore);
 }
 
 OffsetIteratorValue<T> Function(
@@ -35,7 +46,9 @@ OffsetIteratorValue<T> Function(
       ref.onDispose(() => disposed = true);
 
       Future<void> doPull(int remaining) {
-        if (disposed || remaining == 0) return Future.sync(() {});
+        if (disposed || remaining == 0 || iterator.isLastOffset(offset)) {
+          return Future.sync(() {});
+        }
 
         final earliest = iterator.earliestAvailableOffset - 1;
         if (earliest > offset) offset = earliest;
