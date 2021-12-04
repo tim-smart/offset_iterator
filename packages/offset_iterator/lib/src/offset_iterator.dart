@@ -323,12 +323,15 @@ class OffsetIterator<T> {
     return () => valueOrNull ?? fallback?.call();
   }
 
+  /// Trim the [log] to the target `offset`.
   set earliestAvailableOffset(int offset) {
     if (offset > this.offset || offset < 2) return;
 
     final targetLogLength = _offset - offset;
-    while (targetLogLength < log.length) {
+    var toRemove = log.length - targetLogLength;
+    while (toRemove > 0) {
       log.removeFirst();
+      toRemove--;
     }
   }
 
@@ -337,16 +340,21 @@ class OffsetIterator<T> {
     for (final listener in _listeners) {
       listener();
     }
+
+    if (drained) removeAllListeners();
   }
 
+  /// Add a `listener` that is triggered when the head [value] is updated.
   void addListener(void Function() listener) {
     _listeners.add(listener);
   }
 
+  /// Remove a `listener`.
   void removeListener(void Function() listener) {
     _listeners.removeWhere((element) => element == listener);
   }
 
+  /// Remove all the listeners.
   void removeAllListeners() => _listeners.clear();
 
   /// Create an `OffsetIterator` from the provided `Stream`.

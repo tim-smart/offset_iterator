@@ -3,18 +3,32 @@ import 'dart:math' as math;
 import 'package:offset_iterator/src/offset_iterator.dart';
 
 extension ConsumerGroupExtension<T> on OffsetIterator<T> {
-  ConsumerGroup<T> consumerGroup() => ConsumerGroup(this);
+  /// Creates a [ConsumerGroup] that automatically trims the `log` when all
+  /// consumers have pulled the earliest offset.
+  ConsumerGroup<T> consumerGroup() {
+    if (retention > -1) {
+      throw StateError('retention should be -1 for ConsumerGroup usage');
+    }
+
+    return ConsumerGroup(this);
+  }
 }
 
 class ConsumerGroup<T> {
   ConsumerGroup(this.iterator);
 
+  /// The wrapped [OffsetIterator] that consumers will pull from.
   final OffsetIterator<T> iterator;
+
   final _offsets = <OffsetIterator<T>, int>{};
   Future<void>? _sweepFuture;
 
+  /// The current [OffsetIterator]'s that are pulling from [iterator].
   Set<OffsetIterator<T>> get children => _offsets.keys.toSet();
 
+  /// Create a new [OffsetIterator] that will pull from the [iterator].
+  /// It is garanteed not to miss an item, and the parent will have it's `log`
+  /// trimmed to contain the least amount of items as possible.
   OffsetIterator<T> consumer({
     int? startOffset,
     int retention = 0,
@@ -51,6 +65,7 @@ class ConsumerGroup<T> {
     _maybeSetEarliestOffset();
   }
 
+  /// Remove a child [OffsetIterator] from the [ConsumerGroup].
   void deregister(OffsetIterator<T> child) {
     _offsets.remove(child);
     _maybeSetEarliestOffset();
