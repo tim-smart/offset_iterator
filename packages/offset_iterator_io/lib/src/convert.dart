@@ -10,7 +10,7 @@ extension EncodeExtension on OffsetIterator<String> {
 }
 
 extension DecodeExtension on OffsetIterator<List<int>> {
-  /// Decodes binary into [String], using the given [Encoding] codec.
+  /// Decodes binary into [String]'s, using the given [Encoding] codec.
   /// Defaults to [utf8].
   OffsetIterator<String> decode({Encoding encoding = utf8}) =>
       map(encoding.decode);
