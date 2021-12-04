@@ -12,10 +12,11 @@ OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
     };
 
 class OffsetIteratorValue<T> {
-  const OffsetIteratorValue._(this.value, this._pull);
+  const OffsetIteratorValue._(this.value, this.hasMore, this._pull);
 
   final AsyncValue<T> value;
   final Future<void> Function(int) _pull;
+  final bool hasMore;
 
   Future<void> pull() => _pull(1);
 }
@@ -36,12 +37,21 @@ OffsetIteratorValue<T> Function(
       Future<void> doPull(int remaining) {
         if (disposed || remaining == 0) return Future.sync(() {});
 
-        return Future.value(iterator.pull(offset)).then((_) {
+        final earliest = iterator.earliestAvailableOffset - 1;
+        if (earliest > offset) offset = earliest;
+
+        return Future.value(iterator.pull(offset)).then((value) {
           offset++;
+          value.map((v) => ref.state = OffsetIteratorValue._(
+                AsyncValue.data(v),
+                iterator.hasMore(offset),
+                doPull,
+              ));
           return doPull(remaining - 1);
         }).catchError((err, stack) {
           ref.state = OffsetIteratorValue._(
             AsyncValue.error(err, stackTrace: stack),
+            iterator.hasMore(offset),
             doPull,
           );
         });
@@ -49,38 +59,12 @@ OffsetIteratorValue<T> Function(
 
       doPull(initialDemand);
 
-      // Handle value changes
-      void onChange() {
-        iterator.value.map((v) => ref.state = OffsetIteratorValue._(
-              AsyncValue.data(v),
-              doPull,
-            ));
-      }
-
-      iterator.addListener(onChange);
-      ref.onDispose(() => iterator.removeListener(onChange));
-
       return OffsetIteratorValue._(
-        iterator.value.match(
+        iterator.valueAt(offset).match(
           (v) => AsyncValue.data(v),
           () => const AsyncValue.loading(),
         ),
+        iterator.hasMore(offset),
         doPull,
       );
-    };
-
-bool Function(
-  OffsetIterator<T> iterator,
-) iteratorHasMoreProvider<T>(ProviderRef<bool> ref) => (iterator) {
-      if (iterator.drained) return false;
-
-      void onChange() {
-        if (!iterator.drained) return;
-        ref.state = false;
-      }
-
-      iterator.addListener(onChange);
-      ref.onDispose(() => iterator.removeListener(onChange));
-
-      return true;
     };
