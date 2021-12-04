@@ -1,6 +1,5 @@
 library offset_iterator_riverpod;
 
-import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:riverpod/riverpod.dart';
 
@@ -12,10 +11,19 @@ OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
       return iterator;
     };
 
-Tuple2<AsyncValue<T>, Future<void> Function()> Function(
+class OffsetIteratorValue<T> {
+  const OffsetIteratorValue._(this.value, this._pull);
+
+  final AsyncValue<T> value;
+  final Future<void> Function(int) _pull;
+
+  Future<void> pull() => _pull(1);
+}
+
+OffsetIteratorValue<T> Function(
   OffsetIterator<T> iterator,
 ) iteratorValueProvider<T>(
-  ProviderRef<Tuple2<AsyncValue<T>, Future<void> Function()>> ref, {
+  ProviderRef<OffsetIteratorValue<T>> ref, {
   int? startOffset,
   int initialDemand = 1,
 }) =>
@@ -32,31 +40,32 @@ Tuple2<AsyncValue<T>, Future<void> Function()> Function(
           offset++;
           return doPull(remaining - 1);
         }).catchError((err, stack) {
-          ref.state = tuple2(
+          ref.state = OffsetIteratorValue._(
             AsyncValue.error(err, stackTrace: stack),
-            () => doPull(1),
+            doPull,
           );
         });
       }
-
-      Future<void> pull() => doPull(1);
 
       doPull(initialDemand);
 
       // Handle value changes
       void onChange() {
-        iterator.value.map((v) => ref.state = tuple2(AsyncValue.data(v), pull));
+        iterator.value.map((v) => ref.state = OffsetIteratorValue._(
+              AsyncValue.data(v),
+              doPull,
+            ));
       }
 
       iterator.addListener(onChange);
       ref.onDispose(() => iterator.removeListener(onChange));
 
-      return tuple2(
+      return OffsetIteratorValue._(
         iterator.value.match(
           (v) => AsyncValue.data(v),
           () => const AsyncValue.loading(),
         ),
-        pull,
+        doPull,
       );
     };
 
