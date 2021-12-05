@@ -26,7 +26,7 @@ void main() {
       sink.add(3);
       sink.close(some(4));
 
-      expect(await sink.iterator.toList(startOffset: 0), [2, 4, 6, 8]);
+      expect(await sink.iterator.startFrom(0).toList(), [2, 4, 6, 8]);
     });
 
     test('cancels on error', () async {
@@ -46,7 +46,7 @@ void main() {
       final sink = multiplierController();
 
       await sink.drain(i.pipe);
-      expect(await sink.iterator.toList(startOffset: 0), [2, 4, 6, 8]);
+      expect(await sink.iterator.startFrom(0).toList(), [2, 4, 6, 8]);
     });
   });
 }

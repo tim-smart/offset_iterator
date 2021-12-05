@@ -55,7 +55,7 @@ void main() {
         0,
         end: 5,
         retention: -1,
-        seed: () => -1,
+        seed: () => some(-1),
       );
       final g = parent.consumerGroup();
       final child = g.consumer();

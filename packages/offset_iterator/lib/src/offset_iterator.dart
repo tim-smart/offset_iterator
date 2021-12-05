@@ -5,7 +5,7 @@ import 'package:fpdart/fpdart.dart';
 
 class OffsetIteratorState<T> {
   const OffsetIteratorState({
-    required this.acc,
+    this.acc,
     this.chunk = const [],
     this.hasMore = true,
     this.error,
@@ -22,7 +22,7 @@ class OffsetIteratorState<T> {
 typedef InitCallback = FutureOr<dynamic> Function();
 typedef ProcessCallback<T> = FutureOr<OffsetIteratorState<T>> Function(dynamic);
 typedef CleanupCallback = FutureOr<void> Function(dynamic);
-typedef SeedCallback<T> = T? Function();
+typedef SeedCallback<T> = Option<T> Function();
 
 enum OffsetIteratorStatus {
   unseeded,
@@ -33,10 +33,10 @@ enum OffsetIteratorStatus {
 
 class OffsetIterator<T> {
   OffsetIterator({
-    required InitCallback init,
+    InitCallback? init,
     required ProcessCallback<T> process,
     CleanupCallback? cleanup,
-    SeedCallback? seed,
+    SeedCallback<T>? seed,
     this.retention = 0,
     bool? cancelOnError,
   })  : _init = init,
@@ -46,10 +46,10 @@ class OffsetIterator<T> {
     _cleanup = cleanup ?? (_) {};
   }
 
-  final InitCallback _init;
+  final InitCallback? _init;
   final ProcessCallback<T> _process;
   late final CleanupCallback _cleanup;
-  final SeedCallback? _seed;
+  final SeedCallback<T>? _seed;
 
   /// If `true`, [cancel] will be called on error.
   final bool cancelOnError;
@@ -69,7 +69,7 @@ class OffsetIterator<T> {
     return _processingCompleter!.future;
   }
 
-  Option<T> _value = const None();
+  Option<T> _value = none<T>();
 
   /// Get the current head value as an option.
   Option<T> get value {
@@ -110,7 +110,10 @@ class OffsetIterator<T> {
   /// Check if there is more items after the specified offset.
   /// If no offset it specified, it uses the head offset.
   bool hasMore([int? offset]) {
-    offset ??= _offset;
+    if (offset == null) {
+      return state.hasMore || buffer.isNotEmpty;
+    }
+
     return offset < _offset ||
         offset < (_offset + buffer.length) ||
         state.hasMore;
@@ -124,7 +127,7 @@ class OffsetIterator<T> {
 
   void _maybeSeedValue() {
     if (_status != OffsetIteratorStatus.unseeded) return;
-    _value = Option.fromNullable(_seed?.call());
+    if (_seed != null) _value = _seed!();
     _status = OffsetIteratorStatus.seeded;
   }
 
@@ -140,7 +143,10 @@ class OffsetIterator<T> {
 
     if (_status.index < OffsetIteratorStatus.active.index) {
       _maybeSeedValue();
-      final initResult = _init();
+
+      if (_init == null) return _handleInit(offset, null);
+
+      final initResult = _init!();
       return initResult is Future
           ? initResult.then((r) => _handleInit(offset, r))
           : _handleInit(offset, initResult);
@@ -324,13 +330,14 @@ class OffsetIterator<T> {
     _maybeSeedValue();
 
     if (startOffset != null) {
-      return valueAt(startOffset).match(
-        (v) => () => v,
-        () => fallback,
-      );
+      return valueAt(startOffset).map(some).match(
+            (v) => () => v,
+            () => fallback,
+          );
     }
 
-    return () => valueOrNull ?? fallback?.call();
+    final fallbackOption = optionOf(fallback);
+    return () => value.alt(() => fallbackOption.flatMap((f) => f()));
   }
 
   /// Trim the [log] to the target `offset`.
@@ -376,7 +383,8 @@ class OffsetIterator<T> {
     SeedCallback<T>? seed,
   }) {
     final valueStreamSeed =
-        Option.tryCatch(() => (stream as dynamic).valueOrNull as T?);
+        Option.tryCatch(() => (stream as dynamic).valueOrNull as T?)
+            .flatMap(optionOf);
 
     stream = valueStreamSeed.match(
       (_) => stream.skip(1),
@@ -396,7 +404,7 @@ class OffsetIterator<T> {
         );
       },
       cleanup: (i) => (i as StreamIterator<T>).cancel(),
-      seed: seed ?? () => valueStreamSeed.toNullable(),
+      seed: seed ?? () => valueStreamSeed,
       retention: retention,
     );
   }

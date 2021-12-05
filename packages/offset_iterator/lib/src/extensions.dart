@@ -5,34 +5,58 @@ import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 
+extension StartFromExtension<T> on OffsetIterator<T> {
+  OffsetIterator<T> startFrom(int offset) {
+    final parent = this;
+
+    return OffsetIterator(
+      init: () => offset,
+      process: (offset) {
+        final earliest = parent.earliestAvailableOffset - 1;
+        if (offset < earliest) offset = earliest;
+
+        final futureOr = parent.pull(offset);
+
+        if (futureOr is! Future) {
+          return OffsetIteratorState(
+            acc: offset + 1,
+            chunk: futureOr is Some ? [(futureOr as Some).value] : const [],
+            hasMore: parent.hasMore(offset + 1),
+          );
+        }
+
+        return (futureOr as Future<Option<T>>)
+            .then((item) => OffsetIteratorState(
+                  acc: offset + 1,
+                  chunk: item is Some ? [(item as Some).value] : const [],
+                  hasMore: parent.hasMore(offset + 1),
+                ));
+      },
+      seed: parent.generateSeed(startOffset: offset),
+    );
+  }
+}
+
 FutureOr<OffsetIteratorState<R>> Function<R>(
-  int offset,
   Option<T> item,
   FutureOr<List<R>?> chunkFuture,
 ) _handleItem<T>(OffsetIterator<T> parent) {
   final handleNextChunk = _handleNextChunk(parent);
 
-  return <R>(offset, item, chunkFuture) {
-    final newOffset = offset + 1;
-
-    return chunkFuture is Future
-        ? (chunkFuture as Future)
-            .then((chunk) => handleNextChunk(newOffset, item, chunk))
-        : handleNextChunk(newOffset, item, chunkFuture);
-  };
+  return <R>(item, chunkFuture) => chunkFuture is Future
+      ? (chunkFuture as Future).then((chunk) => handleNextChunk(item, chunk))
+      : handleNextChunk(item, chunkFuture);
 }
 
 FutureOr<OffsetIteratorState<R>> Function<R>(
-  int newOffset,
   Option<T> item,
   List<R>? chunk,
-) _handleNextChunk<T>(OffsetIterator<T> parent) => <R>(newOffset, item, chunk) {
+) _handleNextChunk<T>(OffsetIterator<T> parent) => <R>(item, chunk) {
       final hasMore = item.isSome() && chunk != null;
 
       return OffsetIteratorState(
-        acc: newOffset,
         chunk: chunk ?? [],
-        hasMore: hasMore && parent.hasMore(newOffset),
+        hasMore: hasMore && parent.hasMore(),
       );
     };
 
@@ -40,8 +64,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> transform<R>(
     FutureOr<List<R>?> Function(T) pred, {
     SeedCallback<R>? seed,
-    int? retention,
-    int? startOffset,
+    int retention = 0,
     int concurrency = 1,
   }) {
     if (concurrency > 1) {
@@ -50,7 +73,6 @@ extension TransformExtension<T> on OffsetIterator<T> {
         concurrency: concurrency,
         seed: seed,
         retention: retention,
-        startOffset: startOffset,
       );
     }
 
@@ -58,34 +80,28 @@ extension TransformExtension<T> on OffsetIterator<T> {
     final handleItem = _handleItem(parent);
 
     return OffsetIterator(
-      init: () => startOffset ?? parent.offset,
-      process: (offset) {
-        final earliest = parent.earliestAvailableOffset - 1;
-        if (offset < earliest) offset = earliest;
-
-        final itemFuture = parent.pull(offset);
+      process: (_) {
+        final itemFuture = parent.pull();
         return itemFuture is Future
-            ? (itemFuture as Future).then(
-                (item) => handleItem(offset, item, item.map(pred).toNullable()))
-            : handleItem(offset, itemFuture, itemFuture.map(pred).toNullable());
+            ? (itemFuture as Future)
+                .then((item) => handleItem(item, item.map(pred).toNullable()))
+            : handleItem(itemFuture, itemFuture.map(pred).toNullable());
       },
       seed: seed,
-      retention: retention ?? parent.retention,
+      retention: retention,
     );
   }
 
   OffsetIterator<T> transformIdentical(
     FutureOr<List<T>?> Function(T) pred, {
     SeedCallback<T>? seed,
-    int? retention,
-    int? startOffset,
+    int retention = 0,
     int concurrency = 1,
   }) =>
       transform(
         pred,
-        seed: generateSeed(startOffset: startOffset, override: seed),
+        seed: generateSeed(override: seed),
         retention: retention,
-        startOffset: startOffset,
         concurrency: concurrency,
       );
 }
@@ -93,15 +109,14 @@ extension TransformExtension<T> on OffsetIterator<T> {
 extension MapExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> map<R>(
     R Function(T) pred, {
-    int? retention,
-    int? startOffset,
+    int retention = 0,
   }) {
-    final seed = generateSeed(startOffset: startOffset);
+    final seed = generateSeed();
+
     return transform(
       (item) => [pred(item)],
-      seed: () => optionOf(seed?.call()).map(pred).toNullable(),
+      seed: () => (seed?.call() ?? const None()).map(pred),
       retention: retention,
-      startOffset: startOffset,
     );
   }
 }
@@ -110,15 +125,13 @@ extension AsyncMapExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> asyncMap<R>(
     Future<R> Function(T) pred, {
     SeedCallback<R>? seed,
-    int? retention,
-    int? startOffset,
+    int retention = 0,
     int concurrency = 1,
   }) =>
       transform(
         (item) => pred(item).then((v) => [v]),
         seed: seed,
         retention: retention,
-        startOffset: startOffset,
         concurrency: concurrency,
       );
 }
@@ -128,8 +141,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
     R initialValue,
     R Function(R, T) reducer, {
     SeedCallback<R>? seed,
-    int? retention,
-    int? startOffset,
+    int retention = 0,
   }) {
     R acc = initialValue;
 
@@ -140,7 +152,6 @@ extension ScanExtension<T> on OffsetIterator<T> {
       },
       seed: seed,
       retention: retention,
-      startOffset: startOffset,
     );
   }
 }
@@ -149,8 +160,7 @@ extension TapExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> tap(
     void Function(T) effect, {
     SeedCallback<T>? seed,
-    int? retention,
-    int? startOffset,
+    int retention = 0,
   }) =>
       transformIdentical(
         (item) {
@@ -159,7 +169,6 @@ extension TapExtension<T> on OffsetIterator<T> {
         },
         seed: seed,
         retention: retention,
-        startOffset: startOffset,
       );
 }
 
@@ -167,72 +176,66 @@ extension DistinctExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> distinct({
     bool Function(T prev, T next)? equals,
     SeedCallback<T>? seed,
-    int? retention,
-    int? startOffset,
+    int retention = 0,
   }) {
     bool Function(T, T) eq = equals ?? (prev, next) => prev == next;
-    T? prev;
-    seed = generateSeed(override: seed, startOffset: startOffset);
+    Option<T> prev = const None();
+    seed = generateSeed(override: seed);
 
     return transform(
       (item) {
-        if (prev == null) {
-          prev = item;
+        if (prev.isNone()) {
+          prev = Some(item);
           return [item];
         }
 
-        final duplicate = eq(prev!, item);
-        prev = item;
+        final duplicate = eq((prev as Some).value, item);
+        prev = Some(item);
         return duplicate ? [] : [item];
       },
       seed: () {
-        prev = seed?.call();
+        if (seed != null) prev = seed();
         return prev;
       },
       retention: retention,
-      startOffset: startOffset,
     );
   }
 }
 
 extension TakeWhileExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> takeWhile(
-    bool Function(T item, T? prev) predicate, {
+    bool Function(T item, Option<T> prev) predicate, {
     SeedCallback<T>? seed,
-    int? retention,
-    int? startOffset,
+    int retention = 0,
   }) {
-    T? prev;
-    seed = generateSeed(override: seed, startOffset: startOffset);
+    Option<T> prev = const None();
+    seed = generateSeed(override: seed);
 
     return transform(
       (item) {
         final more = predicate(item, prev);
-        prev = item;
+        prev = Some(item);
         return more ? [item] : null;
       },
       seed: () {
-        prev = seed?.call();
+        if (seed != null) prev = seed();
         return prev;
       },
       retention: retention,
-      startOffset: startOffset,
     );
   }
 }
 
 extension TakeUntilExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> takeUntil(
-    bool Function(T item, T? prev) predicate, {
+    bool Function(T item, Option<T> prev) predicate, {
     SeedCallback<T>? seed,
-    int? retention,
-    int? startOffset,
+    int retention = 0,
   }) =>
       takeWhile(
         (item, prev) => !predicate(item, prev),
         seed: seed,
         retention: retention,
-        startOffset: startOffset,
       );
 }
 
@@ -240,7 +243,7 @@ extension AccumulateExtension<T> on OffsetIterator<List<T>> {
   /// Concats a stream of [List]'s together, and emits a new list each time.
   OffsetIterator<List<T>> accumulate({
     SeedCallback<List<T>>? seed,
-    int? retention,
+    int retention = 0,
   }) =>
       scan(
         [],
@@ -253,7 +256,7 @@ extension AccumulateExtension<T> on OffsetIterator<List<T>> {
 extension AccumulateIListExtension<T> on OffsetIterator<IList<T>> {
   OffsetIterator<IList<T>> accumulateIList({
     SeedCallback<IList<T>>? seed,
-    int? retention,
+    int retention = 0,
   }) =>
       scan(
         IList(),
@@ -288,7 +291,7 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
         }
 
         return OffsetIteratorState(
-          acc:  remainingRetries,
+          acc: remainingRetries,
           chunk: chunk ?? [],
           hasMore: remainingRetries == 0 ? false : !parent.drained,
         );
@@ -296,24 +299,23 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
     );
   }
 }
+
 extension PrefetchExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> prefetch() {
     final parent = this;
 
     return OffsetIterator(
       seed: parent.generateSeed(),
-      init: () {},
       process: (acc) async {
         final futureOr = parent.pull();
         final item = futureOr is Future ? await futureOr : futureOr;
-        final hasMore = !parent.drained;
+        final hasMore = parent.hasMore();
 
         if (hasMore) parent.pull();
 
         return OffsetIteratorState(
-          acc: null,
-          chunk: item.match((v) => [v], () => []),
-          hasMore: !parent.drained,
+          chunk: item is Some ? [(item as Some).value] : [],
+          hasMore: hasMore,
         );
       },
     );
@@ -321,10 +323,7 @@ extension PrefetchExtension<T> on OffsetIterator<T> {
 }
 
 extension FoldExtension<T> on OffsetIterator<T> {
-  Future<R> fold<R>(
-    R initialValue,
-    R Function(R acc, T item) reducer, {
-  }) async {
+  Future<R> fold<R>(R initialValue, R Function(R acc, T item) reducer) async {
     var acc = initialValue;
 
     while (!drained) {
@@ -338,10 +337,9 @@ extension FoldExtension<T> on OffsetIterator<T> {
 }
 
 extension ToIListExtension<T> on OffsetIterator<T> {
-  Future<IList<T>> toIList({int? startOffset}) => fold(
+  Future<IList<T>> toIList() => fold(
         IList(),
         (acc, item) => acc.add(item),
-        startOffset: startOffset,
       );
 }
 
@@ -354,35 +352,28 @@ extension ToListExtension<T> on OffsetIterator<T> {
 
 extension IntExtension on OffsetIterator<int> {
   /// Calculates the sum of all the emitted numbers.
-  Future<int> sum() => fold(
-        0,
-        (acc, item) => acc + item,
-      );
+  Future<int> sum() => fold(0, (acc, item) => acc + item);
 }
 
 extension DoubleExtension on OffsetIterator<double> {
   /// Calculates the sum of all the emitted numbers.
-  Future<double> sum() => fold(
-        0,
-        (acc, item) => acc + item,
-      );
+  Future<double> sum() => fold(0, (acc, item) => acc + item);
 }
 
 extension FlatMapExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> flatMap<R>(
     OffsetIterator<R> Function(T item) pred, {
-    int? retention,
+    int retention = 0,
     SeedCallback<R>? seed,
   }) {
     final parent = this;
 
     return OffsetIterator(
-      init: () => null,
       process: (acc) async {
         var child = acc as OffsetIterator<R>?;
 
         if (child == null) {
-          final itemFuture = parent.pull(offset);
+          final itemFuture = parent.pull();
           final item = itemFuture is Future ? await itemFuture : itemFuture;
           child = item.map(pred).toNullable();
         }
@@ -390,7 +381,7 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
         if (child != null) {
           final itemFuture = child.pull();
           final item = itemFuture is Future ? await itemFuture : itemFuture;
-          final childHasMore = !child.drained;
+          final childHasMore = child.hasMore();
 
           return OffsetIteratorState(
             acc: childHasMore ? child : null,
@@ -405,7 +396,7 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
         );
       },
       seed: seed,
-      retention: retention ?? parent.retention,
+      retention: retention,
     );
   }
 }
@@ -420,20 +411,16 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
     final parent = this;
     final queue = Queue<FutureOr<List<R>?>>();
 
-    Future<int> fillQueue() async {
+    Future<void> fillQueue() async {
       while (queue.length < concurrency && parent.hasMore()) {
         final itemFuture = parent.pull();
         final item = itemFuture is Future ? await itemFuture : itemFuture;
-
-        item.map((item) {
-          queue.add(predicate(item));
-        });
+        item.map((item) => queue.add(predicate(item)));
       }
     }
 
     return OffsetIterator(
-      init: () {},
-      process: (acc) async {
+      process: (_) async {
         if (queue.isEmpty) {
           await fillQueue();
         }
@@ -442,7 +429,6 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
         await fillQueue();
 
         return OffsetIteratorState(
-          acc: null,
           chunk: chunk ?? [],
           hasMore: chunk != null && queue.isNotEmpty,
         );

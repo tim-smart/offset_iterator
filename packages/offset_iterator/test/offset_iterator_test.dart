@@ -162,7 +162,7 @@ void main() {
       expect(i.log.toList(), equals([2, 3, 4]));
       expect(i.earliestAvailableOffset, equals(2));
 
-      expect(await i.toList(startOffset: 0), equals([2, 3, 4, 5]));
+      expect(await i.startFrom(0).toList(), equals([2, 3, 4, 5]));
     });
 
     test('replaying', () async {
@@ -172,8 +172,8 @@ void main() {
       );
       expect(await i.toList(), equals([1, 2, 3, 4, 5]));
       expect(await i.toList(), equals([]));
-      expect(await i.toList(startOffset: 0), equals([1, 2, 3, 4, 5]));
-      expect(await i.toList(startOffset: 2), equals([3, 4, 5]));
+      expect(await i.startFrom(0).toList(), equals([1, 2, 3, 4, 5]));
+      expect(await i.startFrom(2).toList(), equals([3, 4, 5]));
     });
 
     test('you can not request un-pulled items', () async {
@@ -181,7 +181,7 @@ void main() {
         Stream.fromIterable([1, 2, 3, 4, 5]),
         retention: -1,
       );
-      await expectLater(i.toList(startOffset: 3), throwsRangeError);
+      await expectLater(() => i.startFrom(3).toList(), throwsRangeError);
     });
   });
 
@@ -196,7 +196,7 @@ void main() {
       i.cancel();
 
       expect(await i.pull(), none());
-      expect(await i.toList(startOffset: 0), equals([1, 2]));
+      expect(await i.startFrom(0).toList(), equals([1, 2]));
     });
   });
 
@@ -232,30 +232,30 @@ void main() {
 
   group('.generateSeed', () {
     test('by default returns a seed that returns the latest value', () async {
-      final i = OffsetIterator.range(0, end: 5, seed: () => -1);
+      final i = OffsetIterator.range(0, end: 5, seed: () => some(-1));
 
       expect(i.status, OffsetIteratorStatus.unseeded);
       final seed = i.generateSeed();
       expect(i.status, OffsetIteratorStatus.seeded);
-      expect(seed!(), -1);
+      expect(seed!(), some(-1));
     });
 
     test('accepts an override', () async {
-      final i = OffsetIterator.range(0, end: 5, seed: () => -1);
+      final i = OffsetIterator.range(0, end: 5, seed: () => some(-1));
 
       expect(i.status, OffsetIteratorStatus.unseeded);
-      final seed = i.generateSeed(override: () => -2);
+      final seed = i.generateSeed(override: () => some(-2));
       expect(i.status, OffsetIteratorStatus.unseeded);
-      expect(seed!(), -2);
+      expect(seed!(), some(-2));
     });
 
     test('accepts a fallback', () async {
       final i = OffsetIterator.range(0, end: 5);
 
       expect(i.status, OffsetIteratorStatus.unseeded);
-      final seed = i.generateSeed(fallback: () => -2);
+      final seed = i.generateSeed(fallback: () => some(-2));
       expect(i.status, OffsetIteratorStatus.seeded);
-      expect(seed!(), -2);
+      expect(seed!(), some(-2));
     });
   });
 

@@ -54,19 +54,19 @@ void main() {
           i + 100,
           i + 1000,
         ];
-      }, seed: () => 0);
+      }, seed: () => some(0));
 
       expect(i.value, some(0));
       expect(i.offset, 0);
       expect(
-          await i.toList(startOffset: 0), equals([1, 101, 1001, 2, 102, 1002]));
+          await i.startFrom(0).toList(), equals([1, 101, 1001, 2, 102, 1002]));
     });
   });
 
   group('map', () {
     test('transforms the items including the seed', () async {
-      final i =
-          OffsetIterator.fromIterable([2, 3], seed: () => 1).map((i) => i * 2);
+      final i = OffsetIterator.fromIterable([2, 3], seed: () => some(1))
+          .map((i) => i * 2);
 
       expect(i.value, some(2));
       expect(i.offset, 0);
@@ -76,13 +76,13 @@ void main() {
     test('startOffset allows replay', () async {
       final i = OffsetIterator.fromIterable(
         [2, 3],
-        seed: () => 1,
+        seed: () => some(1),
         retention: -1,
       );
       await i.run();
       expect(i.log.toList(), [1, 2]);
 
-      final mapped = i.map((i) => i * 2, startOffset: 0);
+      final mapped = i.startFrom(0).map((i) => i * 2);
 
       expect(mapped.value, some(2));
       expect(mapped.offset, 0);
@@ -97,7 +97,7 @@ void main() {
       await i.run();
       expect(i.log.toList(), [1, 2]);
 
-      final mapped = i.map((i) => i * 2, startOffset: 0);
+      final mapped = i.startFrom(0).map((i) => i * 2);
 
       expect(mapped.value, none());
       expect(mapped.offset, 0);
@@ -108,7 +108,7 @@ void main() {
   group('asyncMap', () {
     test('transforms the items', () async {
       final i = OffsetIterator.fromIterable([2, 3])
-          .asyncMap((i) async => i * 2, seed: () => 2);
+          .asyncMap((i) async => i * 2, seed: () => some(2));
 
       expect(i.value, some(2));
       expect(i.offset, 0);
@@ -128,7 +128,7 @@ void main() {
 
     test('allows the seed to be set', () async {
       final i = OffsetIterator.fromIterable([1, 2, 3])
-          .scan<int>(0, (acc, i) => acc + i, seed: () => -1);
+          .scan<int>(0, (acc, i) => acc + i, seed: () => some(-1));
 
       expect(i.value, some(-1));
       expect(i.offset, 0);
@@ -139,7 +139,8 @@ void main() {
   group('tap', () {
     test('runs the effect function for each item', () async {
       final processed = <int>[];
-      final i = OffsetIterator.fromIterable([1, 2, 3], seed: () => 0).tap((i) {
+      final i =
+          OffsetIterator.fromIterable([1, 2, 3], seed: () => some(0)).tap((i) {
         processed.add(i);
       });
 
@@ -153,7 +154,8 @@ void main() {
   group('tap', () {
     test('runs the effect function for each item', () async {
       final processed = <int>[];
-      final i = OffsetIterator.fromIterable([1, 2, 3], seed: () => 0).tap((i) {
+      final i =
+          OffsetIterator.fromIterable([1, 2, 3], seed: () => some(0)).tap((i) {
         processed.add(i);
       });
 
@@ -166,8 +168,9 @@ void main() {
 
   group('distinct', () {
     test('removes sequential duplicates', () async {
-      final i = OffsetIterator.fromIterable([1, 1, 2, 2, 3, 3], seed: () => 1)
-          .distinct();
+      final i =
+          OffsetIterator.fromIterable([1, 1, 2, 2, 3, 3], seed: () => some(1))
+              .distinct();
 
       expect(i.value, some(1));
 
@@ -184,8 +187,9 @@ void main() {
 
   group('takeWhile', () {
     test('emits items until predicate returns false', () async {
-      final i = OffsetIterator.fromIterable([1, 2, 3, 4, 5], seed: () => 0)
-          .takeWhile((i, prev) => i < 3);
+      final i =
+          OffsetIterator.fromIterable([1, 2, 3, 4, 5], seed: () => some(0))
+              .takeWhile((i, prev) => i < 3);
 
       expect(i.value, some(0));
       expect(await i.toList(), equals([1, 2]));
@@ -194,8 +198,9 @@ void main() {
 
   group('takeUntil', () {
     test('emits items until predicate returns true', () async {
-      final i = OffsetIterator.fromIterable([1, 2, 3, 4, 5], seed: () => 0)
-          .takeUntil((i, prev) => i >= 3);
+      final i =
+          OffsetIterator.fromIterable([1, 2, 3, 4, 5], seed: () => some(0))
+              .takeUntil((i, prev) => i >= 3);
 
       expect(i.value, some(0));
       expect(await i.toList(), equals([1, 2]));
@@ -247,7 +252,7 @@ void main() {
         'runs the handler on error and stops the iterator if it returns nothing',
         () async {
       var handled = false;
-      final i = OffsetIterator(
+      final i = OffsetIterator<int>(
         init: () => 0,
         process: (acc) {
           if (acc > 2) throw 'fail';
@@ -258,7 +263,7 @@ void main() {
             hasMore: true,
           );
         },
-        seed: () => -1,
+        seed: () => some(-1),
       ).handleError((err, stack) {
         handled = true;
       });
@@ -270,7 +275,7 @@ void main() {
 
     test('runs the handler on error and retries if true is returned', () async {
       var retries = 0;
-      final i = OffsetIterator(
+      final i = OffsetIterator<int>(
         init: () => 0,
         process: (acc) {
           if (acc == 2) throw 'fail';
@@ -281,7 +286,7 @@ void main() {
             hasMore: true,
           );
         },
-        seed: () => -1,
+        seed: () => some(-1),
       ).handleError((err, stack) {
         retries++;
         return true;
@@ -322,7 +327,7 @@ void main() {
           i + 100,
           i + 1000,
         ]),
-        seed: () => 0,
+        seed: () => some(0),
       );
 
       expect(i.value, some(0));
