@@ -55,7 +55,7 @@ class OffsetIterator<T> {
   final bool cancelOnError;
 
   /// The latest state from the `process` function.
-  var state = OffsetIteratorState<T>(acc: null);
+  var state = OffsetIteratorState<T>();
 
   /// The internal status
   OffsetIteratorStatus get status => _status;
@@ -64,7 +64,10 @@ class OffsetIterator<T> {
   bool _processing = false;
   Completer<void>? _processingCompleter;
   Future<void> get _processingFuture {
-    if (_processingCompleter != null) return _processingCompleter!.future;
+    if (_processingCompleter != null) {
+      return _processingCompleter!.future;
+    }
+
     _processingCompleter = Completer.sync();
     return _processingCompleter!.future;
   }
@@ -108,7 +111,7 @@ class OffsetIterator<T> {
   /// Check if there is more items after the specified offset.
   /// If no offset it specified, it uses the head offset.
   bool hasMore([int? offset]) {
-    if (offset == null) {
+    if (offset == null || offset == _offset) {
       return state.hasMore || buffer.isNotEmpty;
     }
 
