@@ -105,8 +105,6 @@ class OffsetIterator<T> {
   /// `rentention` property.
   final log = Queue<T>();
 
-  final _listeners = <void Function()>[];
-
   /// Check if there is more items after the specified offset.
   /// If no offset it specified, it uses the head offset.
   bool hasMore([int? offset]) {
@@ -239,7 +237,6 @@ class OffsetIterator<T> {
     final chunkLength = state.chunk.length;
     if (chunkLength == 0) {
       if (state.hasMore == false) {
-        _notifyListeners();
         return const None();
       }
 
@@ -265,8 +262,6 @@ class OffsetIterator<T> {
     final value = Some(item);
     _value = value;
     _offset++;
-
-    _notifyListeners();
 
     return value;
   }
@@ -351,28 +346,6 @@ class OffsetIterator<T> {
       toRemove--;
     }
   }
-
-  void _notifyListeners() {
-    if (_listeners.isEmpty) return;
-    for (final listener in _listeners) {
-      listener();
-    }
-
-    if (drained) removeAllListeners();
-  }
-
-  /// Add a `listener` that is triggered when the head [value] is updated.
-  void addListener(void Function() listener) {
-    _listeners.add(listener);
-  }
-
-  /// Remove a `listener`.
-  void removeListener(void Function() listener) {
-    _listeners.removeWhere((element) => element == listener);
-  }
-
-  /// Remove all the listeners.
-  void removeAllListeners() => _listeners.clear();
 
   /// Create an `OffsetIterator` from the provided `Stream`.
   /// If a `ValueStream` with a seed is given, it will populate the iterator's
