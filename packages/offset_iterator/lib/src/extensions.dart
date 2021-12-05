@@ -311,14 +311,17 @@ extension PrefetchExtension<T> on OffsetIterator<T> {
 
     return OffsetIterator(
       seed: parent.generateSeed(),
-      process: (acc) async {
-        final futureOr = parent.pull();
+      init: () => parent.offset,
+      process: (offset) async {
+        final futureOr = parent.pull(offset);
         final item = futureOr is Future ? await futureOr : futureOr;
-        final hasMore = parent.hasMore();
 
-        if (hasMore) parent.pull();
+        final newOffset = offset + 1;
+        final hasMore = parent.hasMore(newOffset);
+        if (hasMore) parent.pull(newOffset);
 
         return OffsetIteratorState(
+          acc: offset,
           chunk: item is Some ? [(item as Some).value] : [],
           hasMore: hasMore,
         );
