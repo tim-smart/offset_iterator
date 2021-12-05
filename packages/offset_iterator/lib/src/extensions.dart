@@ -6,11 +6,12 @@ import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 
 extension StartFromExtension<T> on OffsetIterator<T> {
-  OffsetIterator<T> startFrom(int offset) {
+  /// Pull from the [OffsetIterator] from the specified offset.
+  OffsetIterator<T> startFrom(int? offset) {
     final parent = this;
 
     return OffsetIterator(
-      init: () => offset,
+      init: () => offset ?? parent.offset,
       process: (offset) {
         final earliest = parent.earliestAvailableOffset - 1;
         if (offset < earliest) offset = earliest;
@@ -35,6 +36,10 @@ extension StartFromExtension<T> on OffsetIterator<T> {
       seed: parent.generateSeed(startOffset: offset),
     );
   }
+
+  /// Don't always pull the latest item from the [OffsetIterator], but instead
+  /// book-keep the last processed offset to ensure items aren't missed.
+  OffsetIterator<T> withTracking() => startFrom(null);
 }
 
 FutureOr<OffsetIteratorState<R>> Function<R>(
