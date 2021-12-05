@@ -19,13 +19,11 @@ class OffsetIteratorBuilder<T> extends StatefulWidget {
     required this.iterator,
     required this.builder,
     this.initialDemand = 1,
-    this.startOffset,
   }) : super(key: key);
 
   final OffsetIterator<T> iterator;
   final OffsetWidgetBuilder<T> builder;
   final int initialDemand;
-  final int? startOffset;
 
   @override
   _OffsetIteratorBuilderState<T> createState() =>
@@ -49,7 +47,6 @@ R Function<R>({
 class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   OffsetIterator<T> get iterator => widget.iterator;
   OffsetIteratorValue<T> state = Either.right(tuple2(none(), true));
-  late int _offset;
   bool _disposed = false;
 
   @override
@@ -68,12 +65,7 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   }
 
   void _subscribe() {
-    _offset = widget.startOffset ?? iterator.offset;
-    if (_offset < iterator.earliestAvailableOffset) {
-      _offset = iterator.earliestAvailableOffset;
-    }
-
-    iterator.valueAt(_offset).map((v) => _handleData(some(v)));
+    iterator.value.map((v) => _handleData(some(v)));
     _initialDemand(widget.initialDemand);
   }
 
@@ -83,16 +75,10 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   }
 
   Future<void> _demand() async {
-    if (iterator.isLastOffset(_offset)) return;
-
-    if (_offset < iterator.earliestAvailableOffset) {
-      _offset = iterator.earliestAvailableOffset;
-    }
+    if (iterator.drained) return;
 
     try {
-      final item = await iterator.pull(_offset);
-      _offset++;
-      _handleData(item);
+      _handleData(await iterator.pull());
     } catch (err) {
       _handleError(err);
     }
@@ -101,7 +87,7 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   Future<void> _handleData(Option<T> item) async {
     if (_disposed) return;
 
-    final hasMore = iterator.hasMore(_offset);
+    final hasMore = iterator.hasMore();
     final newState = item.match<OffsetIteratorValue<T>>(
       (item) => Either.right(tuple2(some(item), hasMore)),
       () => state.map((s) => s.copyWith(value2: hasMore)),

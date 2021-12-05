@@ -203,7 +203,7 @@ packages:
       name: offset_iterator
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.0.37"
+    version: "0.0.39"
   package_config:
     dependency: transitive
     description:

@@ -55,29 +55,32 @@ extension PersistExtension<T> on OffsetIterator<T> {
     required Object? Function(T) toJson,
     required T Function(Object?) fromJson,
     SeedCallback<T>? fallbackSeed,
-    int? retention,
-    int? startOffset,
+    int retention = 0,
   }) {
     key = 'OffsetIterator_$key';
     final currentValue = _readCache(storage, cache, key, fromJson);
     final write = _writeCache(storage, cache, key, toJson);
     final seed = generateSeed(
-      startOffset: startOffset,
-      override: () => currentValue.toNullable(),
+      override: () => currentValue,
       fallback: fallbackSeed,
     );
-    T? prev;
+    Option<T> prev = const None();
 
     return tap(
       (item) {
         Future.microtask(() {
-          if (prev != null && equals != null && equals(prev!, item)) return;
+          if (prev.isSome() &&
+              equals != null &&
+              equals((prev as Some).value, item)) {
+            return;
+          }
+
           write(item);
-          prev = item;
+          prev = Some(item);
         });
       },
       seed: () {
-        prev = seed?.call();
+        if (seed != null) prev = seed();
         return prev;
       },
       retention: retention,
@@ -93,7 +96,7 @@ extension PersistIListExtension<T> on OffsetIterator<IList<T>> {
     required Object? Function(T) toJson,
     required T Function(Object?) fromJson,
     SeedCallback<IList<T>>? fallbackSeed,
-    int? retention,
+    int retention = 0,
   }) =>
       persist(
         storage: storage,

@@ -36,35 +36,30 @@ OffsetIteratorValue<T> Function(
   OffsetIterator<T> iterator,
 ) iteratorValueProvider<T>(
   ProviderRef<OffsetIteratorValue<T>> ref, {
-  int? startOffset,
   int initialDemand = 1,
 }) =>
     (iterator) {
       // Handle initialDemand
-      var offset = startOffset ?? iterator.offset;
       var disposed = false;
       ref.onDispose(() => disposed = true);
 
       Future<void> doPull(int remaining) {
-        if (disposed || remaining == 0 || iterator.isLastOffset(offset)) {
+        if (disposed || remaining == 0 || iterator.drained) {
           return Future.sync(() {});
         }
 
-        final earliest = iterator.earliestAvailableOffset - 1;
-        if (earliest > offset) offset = earliest;
-
-        return Future.value(iterator.pull(offset)).then((value) {
-          offset++;
+        return Future.value(iterator.pull()).then((value) {
           value.map((v) => ref.state = OffsetIteratorValue._(
                 AsyncValue.data(v),
-                iterator.hasMore(offset),
+                iterator.hasMore(),
                 doPull,
               ));
+
           return doPull(remaining - 1);
         }).catchError((err, stack) {
           ref.state = OffsetIteratorValue._(
             AsyncValue.error(err, stackTrace: stack),
-            iterator.hasMore(offset),
+            iterator.hasMore(),
             doPull,
           );
         });
@@ -73,11 +68,11 @@ OffsetIteratorValue<T> Function(
       doPull(initialDemand);
 
       return OffsetIteratorValue._(
-        iterator.valueAt(offset).match(
+        iterator.value.match(
           (v) => AsyncValue.data(v),
           () => const AsyncValue.loading(),
         ),
-        iterator.hasMore(offset),
+        iterator.hasMore(),
         doPull,
       );
     };

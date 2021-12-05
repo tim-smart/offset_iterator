@@ -31,36 +31,25 @@ extension WriteToFile on OffsetIterator<List<int>> {
   OffsetIterator<int> writeToFile(
     File file, {
     FileMode mode = FileMode.writeOnly,
-    int? startOffset,
   }) {
-    final parent = this;
+    final parent = prefetch();
 
     return OffsetIterator(
-      init: () => file
-          .open(mode: mode)
-          .then((file) => tuple2(file, startOffset ?? parent.offset)),
+      init: () => file.open(mode: mode),
       process: (acc) async {
-        final file = acc.first as RandomAccessFile;
-        var offset = acc.second as int;
+        final file = acc as RandomAccessFile;
 
-        final futureOr = parent.pull(offset);
+        final futureOr = parent.pull();
         final chunk = futureOr is Future ? await futureOr : futureOr;
-
-        // Prefetch next chunk
-        final newOffset = offset + 1;
-        final hasMore = parent.hasMore(newOffset);
-        if (hasMore && newOffset == parent.offset) parent.pull(newOffset);
-
-        // Write chunk
         await chunk.match(file.writeFrom, () {});
 
         return OffsetIteratorState(
-          acc: tuple2(file, newOffset),
-          chunk: chunk.match((c) => [c.length], () => []),
-          hasMore: hasMore,
+          acc: file,
+          chunk: chunk is Some ? [(chunk as Some).value.length] : const [],
+          hasMore: parent.hasMore(),
         );
       },
-      cleanup: (acc) => acc.first.close(),
+      cleanup: (file) => file.close(),
     );
   }
 }

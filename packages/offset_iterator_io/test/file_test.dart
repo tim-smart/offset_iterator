@@ -22,7 +22,7 @@ void main() {
       ).encode().writeToFile(File("test/tmp/WriteToFileExtensions.txt"));
 
       await expectLater(i.pull, throwsA('fail'));
-      expect(i.state.acc.first.closed, true);
+      expect(i.state.acc.closed, true);
     });
   });
 }
