@@ -183,6 +183,15 @@ class OffsetIterator<T> {
     }
   }
 
+  void _releaseProcessing() {
+    _processing = false;
+    if (_processingCompleter != null) {
+      final completer = _processingCompleter!;
+      _processingCompleter = null;
+      completer.complete();
+    }
+  }
+
   FutureOr<Option<T>> _doProcessing(int offset) {
     try {
       final futureOr = _process(state.acc);
@@ -206,15 +215,6 @@ class OffsetIterator<T> {
         error: err,
         stackTrace: stack,
       ));
-    }
-  }
-
-  void _releaseProcessing() {
-    _processing = false;
-    if (_processingCompleter != null) {
-      final completer = _processingCompleter!;
-      _processingCompleter = null;
-      completer.complete();
     }
   }
 
