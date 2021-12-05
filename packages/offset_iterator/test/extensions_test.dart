@@ -372,4 +372,17 @@ void main() {
       expect(await i.pull(), none());
     });
   });
+
+  group('prefetch', () {
+    test('eagerly pulls the next item from the parent', () async {
+      final i = OffsetIterator.range(1, end: 5);
+      final prefetched = i.prefetch();
+
+      expect(await prefetched.pull(), some(1));
+      expect(i.offset, equals(2));
+      expect(i.value, equals(some(2)));
+
+      expect(await prefetched.toList(), [2, 3, 4, 5]);
+    });
+  });
 }

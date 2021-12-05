@@ -321,7 +321,7 @@ extension PrefetchExtension<T> on OffsetIterator<T> {
         if (hasMore) parent.pull(newOffset);
 
         return OffsetIteratorState(
-          acc: offset,
+          acc: newOffset,
           chunk: item is Some ? [(item as Some).value] : [],
           hasMore: hasMore,
         );
