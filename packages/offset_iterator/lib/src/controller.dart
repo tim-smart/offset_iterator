@@ -212,29 +212,22 @@ class OffsetIteratorController<T> implements DrainableSink<T> {
 extension PipeExtension<T> on OffsetIterator<T> {
   Future<void> pipe(
     AwaitableSink<T> sink, {
-    int? startOffset,
+    bool closeOnDrained = true,
   }) async {
-    var offset = startOffset ?? this.offset;
-    if (offset < earliestAvailableOffset) {
-      offset = earliestAvailableOffset - 1;
-    }
-
-    while (hasMore(offset)) {
+    while (hasMore()) {
       try {
-        final itemFuture = pull(offset);
+        final itemFuture = pull();
         final item = itemFuture is Future ? await itemFuture : itemFuture;
 
         if (item is Some) {
           final addFuture = sink.add((item as Some).value);
           if (addFuture is Future) await addFuture;
         }
-
-        offset++;
       } catch (err) {
         await sink.addError(err);
       }
     }
 
-    await sink.close();
+    if (closeOnDrained) await sink.close();
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:fpdart/fpdart.dart';
+import 'package:offset_iterator/offset_iterator.dart';
 
 class OffsetIteratorState<T> {
   const OffsetIteratorState({
@@ -435,4 +436,21 @@ class OffsetIterator<T> {
         seed: seed,
         retention: retention,
       );
+
+  /// Combine multiple [OffsetIterator]'s into one.
+  static OffsetIterator<T> combine<T>(
+    Iterable<OffsetIterator<T>> iterators, {
+    bool closeOnError = true,
+    SeedCallback<T>? seed,
+  }) {
+    final c = OffsetIteratorController<T>(
+      closeOnError: closeOnError,
+      seed: seed,
+    );
+
+    Future.wait(iterators.map((i) => i.pipe(c, closeOnDrained: false)))
+        .whenComplete(c.close);
+
+    return c.iterator as OffsetIterator<T>;
+  }
 }

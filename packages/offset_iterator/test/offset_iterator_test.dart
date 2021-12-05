@@ -361,4 +361,16 @@ void main() {
       expect(i.state.error, 'fail');
     });
   });
+
+  group('OffsetIterator.combine', () {
+    test('merges the output from each iterator', () async {
+      final i = OffsetIterator.combine([
+        OffsetIterator.range(1, end: 3),
+        OffsetIterator.range(4, end: 6),
+        OffsetIterator.range(7, end: 9),
+      ]);
+
+      expect(await i.toList(), [1, 4, 7, 2, 5, 8, 3, 6, 9]);
+    });
+  });
 }
