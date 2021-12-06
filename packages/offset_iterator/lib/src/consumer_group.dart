@@ -37,6 +37,7 @@ class ConsumerGroup<T> {
     late final OffsetIterator<T> i;
 
     i = OffsetIterator(
+      name: iterator.toStringWithChild('ConsumerGroup'),
       init: () => startOffset!,
       process: (offset) async {
         final item = await iterator.pull(offset);

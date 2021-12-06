@@ -373,4 +373,16 @@ void main() {
       expect(await i.toList(), [1, 4, 7, 2, 5, 8, 3, 6, 9]);
     });
   });
+
+  group('toString', () {
+    test('without name', () async {
+      final i = OffsetIterator.range(1, end: 5);
+      expect(i.toString(), 'OffsetIterator.range<int>');
+    });
+
+    test('name property modifies toString output', () async {
+      final i = OffsetIterator.range(1, end: 5, name: 'toStringTest');
+      expect(i.toString(), 'toStringTest<int>');
+    });
+  });
 }

@@ -40,13 +40,16 @@ class OffsetIterator<T> {
     SeedCallback<T>? seed,
     this.retention = 0,
     bool? cancelOnError,
+    String? name,
   })  : _init = init,
         _process = process,
         _seed = seed,
+        name = name ?? 'OffsetIterator',
         cancelOnError = cancelOnError ?? cleanup != null {
     _cleanup = cleanup ?? (_) {};
   }
 
+  final String name;
   final InitCallback? _init;
   final ProcessCallback<T> _process;
   late final CleanupCallback _cleanup;
@@ -351,6 +354,11 @@ class OffsetIterator<T> {
     }
   }
 
+  @override
+  String toString() => '$name<$T>';
+
+  String toStringWithChild(String name) => '$this.$name';
+
   /// Create an `OffsetIterator` from the provided `Stream`.
   /// If a `ValueStream` with a seed is given, it will populate the iterator's
   /// seed value.
@@ -358,6 +366,7 @@ class OffsetIterator<T> {
     Stream<T> stream, {
     int retention = 0,
     SeedCallback<T>? seed,
+    String name = 'OffsetIterator.fromStream',
   }) {
     final valueStreamSeed =
         Option.tryCatch(() => (stream as dynamic).valueOrNull as T?)
@@ -369,6 +378,7 @@ class OffsetIterator<T> {
     );
 
     return OffsetIterator(
+      name: name,
       init: () => StreamIterator(stream),
       process: (i) async {
         final iter = i as StreamIterator<T>;
@@ -389,10 +399,12 @@ class OffsetIterator<T> {
   /// Create an `OffsetIterator` from the provided `Iterable`.
   static OffsetIterator<T> fromIterable<T>(
     Iterable<T> iterable, {
+    String name = 'OffsetIterator.fromIterable',
     int retention = 0,
     SeedCallback<T>? seed,
   }) =>
       OffsetIterator(
+        name: name,
         init: () {},
         process: (acc) => OffsetIteratorState(
           acc: null,
@@ -403,14 +415,20 @@ class OffsetIterator<T> {
         retention: retention,
       );
 
-  static OffsetIterator<T> fromValue<T>(T value, {SeedCallback<T>? seed}) =>
-      fromIterable([value], seed: seed);
+  static OffsetIterator<T> fromValue<T>(
+    T value, {
+    String name = 'OffsetIterator.fromValue',
+    SeedCallback<T>? seed,
+  }) =>
+      fromIterable([value], name: name, seed: seed);
 
   static OffsetIterator<T> fromFuture<T>(
     Future<T> Function() future, {
+    String name = 'OffsetIterator.fromFuture',
     SeedCallback<T>? seed,
   }) =>
       OffsetIterator(
+        name: name,
         init: () {},
         process: (_) async => OffsetIteratorState(
           acc: null,
@@ -423,10 +441,12 @@ class OffsetIterator<T> {
   static OffsetIterator<int> range(
     int start, {
     int? end,
+    String name = 'OffsetIterator.range',
     int retention = 0,
     SeedCallback<int>? seed,
   }) =>
       OffsetIterator(
+        name: name,
         init: () => start,
         process: (current) => OffsetIteratorState(
           acc: current + 1,
@@ -440,10 +460,12 @@ class OffsetIterator<T> {
   /// Combine multiple [OffsetIterator]'s into one.
   static OffsetIterator<T> combine<T>(
     Iterable<OffsetIterator<T>> iterators, {
+    String name = 'OffsetIterator.combine',
     bool closeOnError = true,
     SeedCallback<T>? seed,
   }) {
     final c = OffsetIteratorController<T>(
+      name: name,
       closeOnError: closeOnError,
       seed: seed,
     );

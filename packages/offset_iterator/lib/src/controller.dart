@@ -78,11 +78,17 @@ typedef OffsetIteratorControllerTransform<T> = OffsetIterator<dynamic> Function(
 /// [OffsetIterator].
 class OffsetIteratorController<T> implements DrainableSink<T> {
   OffsetIteratorController({
+    String name = 'OffsetIteratorController',
     this.closeOnError = true,
     OffsetIteratorControllerTransform<T>? transform,
     SeedCallback<T>? seed,
   }) {
-    final iter = OffsetIterator<T>(init: () {}, process: _process, seed: seed);
+    final iter = OffsetIterator<T>(
+      name: name,
+      init: () {},
+      process: _process,
+      seed: seed,
+    );
     iterator = transform != null ? transform(iter) : iter;
   }
 

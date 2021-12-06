@@ -7,10 +7,14 @@ import 'package:offset_iterator/offset_iterator.dart';
 
 extension StartFromExtension<T> on OffsetIterator<T> {
   /// Pull from the [OffsetIterator] from the specified offset.
-  OffsetIterator<T> startFrom(int? offset) {
+  OffsetIterator<T> startFrom(
+    int? offset, {
+    String name = 'startFrom',
+  }) {
     final parent = this;
 
     return OffsetIterator(
+      name: toStringWithChild(name),
       init: () => offset ?? parent.offset,
       process: (offset) {
         final earliest = parent.earliestAvailableOffset - 1;
@@ -68,6 +72,7 @@ FutureOr<OffsetIteratorState<R>> Function<R>(
 extension TransformExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> transform<R>(
     FutureOr<List<R>?> Function(T) pred, {
+    String name = 'transform',
     SeedCallback<R>? seed,
     int retention = 0,
     int concurrency = 1,
@@ -85,6 +90,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
     final handleItem = _handleItem(parent);
 
     return OffsetIterator(
+      name: toStringWithChild(name),
       process: (_) {
         final itemFuture = parent.pull();
         return itemFuture is Future
@@ -99,12 +105,14 @@ extension TransformExtension<T> on OffsetIterator<T> {
 
   OffsetIterator<T> transformIdentical(
     FutureOr<List<T>?> Function(T) pred, {
+    String name = 'transformIdentical',
     SeedCallback<T>? seed,
     int retention = 0,
     int concurrency = 1,
   }) =>
       transform(
         pred,
+        name: toStringWithChild(name),
         seed: generateSeed(override: seed),
         retention: retention,
         concurrency: concurrency,
@@ -114,6 +122,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
 extension MapExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> map<R>(
     R Function(T) pred, {
+    String name = 'map',
     int retention = 0,
   }) {
     final seed = generateSeed();
@@ -121,6 +130,7 @@ extension MapExtension<T> on OffsetIterator<T> {
     return transform(
       (item) => [pred(item)],
       seed: () => (seed?.call() ?? const None()).map(pred),
+      name: toStringWithChild(name),
       retention: retention,
     );
   }
@@ -129,12 +139,14 @@ extension MapExtension<T> on OffsetIterator<T> {
 extension AsyncMapExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> asyncMap<R>(
     Future<R> Function(T) pred, {
+    String name = 'asyncMap',
     SeedCallback<R>? seed,
     int retention = 0,
     int concurrency = 1,
   }) =>
       transform(
         (item) => pred(item).then((v) => [v]),
+        name: toStringWithChild(name),
         seed: seed,
         retention: retention,
         concurrency: concurrency,
@@ -145,6 +157,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> scan<R>(
     R initialValue,
     R Function(R, T) reducer, {
+    String name = 'scan',
     SeedCallback<R>? seed,
     int retention = 0,
   }) {
@@ -155,6 +168,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
         acc = reducer(acc, item);
         return [acc];
       },
+      name: toStringWithChild(name),
       seed: seed,
       retention: retention,
     );
@@ -164,6 +178,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
 extension TapExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> tap(
     void Function(T) effect, {
+    String name = 'tap',
     SeedCallback<T>? seed,
     int retention = 0,
   }) =>
@@ -172,6 +187,7 @@ extension TapExtension<T> on OffsetIterator<T> {
           effect(item);
           return [item];
         },
+        name: toStringWithChild(name),
         seed: seed,
         retention: retention,
       );
@@ -180,6 +196,7 @@ extension TapExtension<T> on OffsetIterator<T> {
 extension DistinctExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> distinct({
     bool Function(T prev, T next)? equals,
+    String name = 'distinct',
     SeedCallback<T>? seed,
     int retention = 0,
   }) {
@@ -202,6 +219,7 @@ extension DistinctExtension<T> on OffsetIterator<T> {
         if (seed != null) prev = seed();
         return prev;
       },
+      name: toStringWithChild(name),
       retention: retention,
     );
   }
@@ -210,6 +228,7 @@ extension DistinctExtension<T> on OffsetIterator<T> {
 extension TakeWhileExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> takeWhile(
     bool Function(T item, Option<T> prev) predicate, {
+    String name = 'takeWhile',
     SeedCallback<T>? seed,
     int retention = 0,
   }) {
@@ -226,6 +245,7 @@ extension TakeWhileExtension<T> on OffsetIterator<T> {
         if (seed != null) prev = seed();
         return prev;
       },
+      name: toStringWithChild(name),
       retention: retention,
     );
   }
@@ -234,11 +254,13 @@ extension TakeWhileExtension<T> on OffsetIterator<T> {
 extension TakeUntilExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> takeUntil(
     bool Function(T item, Option<T> prev) predicate, {
+    String name = 'takeUntil',
     SeedCallback<T>? seed,
     int retention = 0,
   }) =>
       takeWhile(
         (item, prev) => !predicate(item, prev),
+        name: toStringWithChild(name),
         seed: seed,
         retention: retention,
       );
@@ -247,12 +269,14 @@ extension TakeUntilExtension<T> on OffsetIterator<T> {
 extension AccumulateExtension<T> on OffsetIterator<List<T>> {
   /// Concats a stream of [List]'s together, and emits a new list each time.
   OffsetIterator<List<T>> accumulate({
+    String name = 'accumulate',
     SeedCallback<List<T>>? seed,
     int retention = 0,
   }) =>
       scan(
         [],
         (acc, chunk) => [...acc, ...chunk],
+        name: toStringWithChild(name),
         seed: seed,
         retention: retention,
       );
@@ -260,12 +284,14 @@ extension AccumulateExtension<T> on OffsetIterator<List<T>> {
 
 extension AccumulateIListExtension<T> on OffsetIterator<IList<T>> {
   OffsetIterator<IList<T>> accumulateIList({
+    String name = 'accumulateIList',
     SeedCallback<IList<T>>? seed,
     int retention = 0,
   }) =>
       scan(
         IList(),
         (acc, chunk) => acc.addAll(chunk),
+        name: toStringWithChild(name),
         seed: seed,
         retention: retention,
       );
@@ -274,12 +300,14 @@ extension AccumulateIListExtension<T> on OffsetIterator<IList<T>> {
 extension HandleErrorExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> handleError(
     FutureOr<bool?> Function(dynamic error, StackTrace stack) onError, {
+    String name = 'handleError',
     int? retention,
     int maxRetries = 5,
   }) {
     final parent = this;
 
     return OffsetIterator(
+      name: toStringWithChild(name),
       seed: parent.generateSeed(),
       retention: retention ?? parent.retention,
       init: () => maxRetries,
@@ -306,10 +334,17 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
 }
 
 extension PrefetchExtension<T> on OffsetIterator<T> {
-  OffsetIterator<T> prefetch() {
+  /// Eagerly load the next item in the [OffsetIterator].
+  ///
+  /// This ensures the the parent [OffsetIterator] is processing the next item
+  /// before the child needs it.
+  OffsetIterator<T> prefetch({
+    String name = 'prefetch',
+  }) {
     final parent = this;
 
     return OffsetIterator(
+      name: toStringWithChild(name),
       seed: parent.generateSeed(),
       init: () => parent.offset,
       process: (offset) async {
@@ -371,12 +406,14 @@ extension DoubleExtension on OffsetIterator<double> {
 extension FlatMapExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> flatMap<R>(
     OffsetIterator<R> Function(T item) pred, {
+    String name = 'flatMap',
     int retention = 0,
     SeedCallback<R>? seed,
   }) {
     final parent = this;
 
     return OffsetIterator(
+      name: toStringWithChild(name),
       process: (acc) async {
         var child = acc as OffsetIterator<R>?;
 
@@ -412,6 +449,7 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
 extension TransformConcurrentExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> transformConcurrent<R>(
     FutureOr<List<R>?> Function(T item) predicate, {
+    String name = 'transformConcurrent',
     required int concurrency,
     SeedCallback<R>? seed,
     int retention = 0,
@@ -428,6 +466,7 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
     }
 
     return OffsetIterator(
+      name: toStringWithChild(name),
       process: (_) async {
         if (queue.isEmpty) {
           await fillQueue();
