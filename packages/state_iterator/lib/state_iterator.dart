@@ -29,7 +29,7 @@ class StateIterator<State> {
     StateIteratorTransform<State>? transform,
     bool closeOnError = false,
     String? name,
-  }) : _state = initialState {
+  }) {
     name ??= 'StateIterator<$State>';
 
     _actionController = OffsetIteratorController(
@@ -41,8 +41,9 @@ class StateIterator<State> {
       name: '$name.iterator',
       transform: transform,
       closeOnError: closeOnError,
-      seed: () => Some(_state),
+      seed: () => Some(initialState),
     );
+    _state = _stateController.iterator.valueOrNull;
 
     _actionController.iterator.run();
   }

@@ -1,6 +1,6 @@
 name: state_iterator
-description: A new Flutter package project.
-version: 0.0.3
+description: A special kind of OffsetIterator, designed for managing state in an application.
+version: 0.0.4
 homepage: https://github.com/tim-smart/offset_iterator
 
 environment:
