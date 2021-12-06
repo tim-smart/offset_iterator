@@ -114,7 +114,7 @@ OffsetIteratorValue<Option<T>> Function(
 /// Helper for creating a [StateIterator] provider.
 /// Calls `close` on dispose.
 StateIterator<T> Function(StateIterator<T> iterator) stateIteratorProvider<T>(
-  ProviderRef<OffsetIterator<T>> ref,
+  ProviderRef<StateIterator<T>> ref,
 ) =>
     (iterator) {
       ref.onDispose(iterator.close);
