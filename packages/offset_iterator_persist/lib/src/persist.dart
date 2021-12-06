@@ -85,7 +85,7 @@ extension PersistExtension<T> on OffsetIterator<T> {
         return prev;
       },
       retention: retention,
-      name: toStringWithChild(name),
+      name: name,
     );
   }
 }
@@ -110,6 +110,6 @@ extension PersistIListExtension<T> on OffsetIterator<IList<T>> {
         fromJson: (json) => IList.fromJson(json, fromJson),
         fallbackSeed: fallbackSeed,
         retention: retention,
-        name: toStringWithChild(name),
+        name: name,
       );
 }
