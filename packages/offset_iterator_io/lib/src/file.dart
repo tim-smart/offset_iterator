@@ -9,8 +9,10 @@ import 'package:offset_iterator/offset_iterator.dart';
 OffsetIterator<Uint8List> fileIterator(
   File file, {
   int blockSize = 64 * 1024,
+  String name = 'fileIterator',
 }) =>
     OffsetIterator(
+      name: name,
       init: () => file.open(mode: FileMode.read),
       process: (acc) async {
         final file = acc as RandomAccessFile;
@@ -31,10 +33,12 @@ extension WriteToFile on OffsetIterator<List<int>> {
   OffsetIterator<int> writeToFile(
     File file, {
     FileMode mode = FileMode.writeOnly,
+    String name = 'writeToFile',
   }) {
     final parent = prefetch();
 
     return OffsetIterator(
+      name: toStringWithChild(name),
       init: () => file.open(mode: mode),
       process: (acc) async {
         final file = acc as RandomAccessFile;
