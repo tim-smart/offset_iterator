@@ -129,5 +129,5 @@ T Function(StateIterator<T> stateIterator) stateIteratorValueProvider<T>(
     (si) {
       final cancel = si.iterator.listen((item) => ref.state = item);
       ref.onDispose(cancel);
-      return si.state;
+      return si.iterator.valueOrNull!;
     };
