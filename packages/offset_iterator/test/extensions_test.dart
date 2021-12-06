@@ -385,4 +385,17 @@ void main() {
       expect(await prefetched.toList(), [2, 3, 4, 5]);
     });
   });
+
+  group('bufferCount', () {
+    test('adds the parent items into lists', () async {
+      final i = OffsetIterator.range(1, end: 10).bufferCount(3);
+
+      expect(await i.toList(), [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+        [10],
+      ]);
+    });
+  });
 }

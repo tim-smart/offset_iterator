@@ -175,6 +175,43 @@ extension ScanExtension<T> on OffsetIterator<T> {
   }
 }
 
+extension BufferExtension<T> on OffsetIterator<T> {
+  /// Converts the parent items into [List]'s of the given size.
+  OffsetIterator<List<T>> bufferCount(
+    int count, {
+    String name = 'bufferCount',
+    SeedCallback<T>? seed,
+    int retention = 0,
+  }) {
+    final parent = this;
+
+    return OffsetIterator(
+      name: toStringWithChild(name),
+      process: (_) async {
+        var buffer = <T>[];
+        var remaining = count;
+
+        while (remaining > 0) {
+          final futureOr = parent.pull();
+          final item = futureOr is Future ? await futureOr : futureOr;
+
+          item.map((item) {
+            buffer.add(item);
+            remaining--;
+          });
+
+          if (parent.drained) break;
+        }
+
+        return OffsetIteratorState(
+          chunk: [buffer],
+          hasMore: parent.hasMore(),
+        );
+      },
+    );
+  }
+}
+
 extension TapExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> tap(
     void Function(T) effect, {
