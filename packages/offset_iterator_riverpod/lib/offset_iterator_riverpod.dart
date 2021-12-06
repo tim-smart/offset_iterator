@@ -121,24 +121,13 @@ StateIterator<T> Function(StateIterator<T> iterator) stateIteratorProvider<T>(
       return iterator;
     };
 
-/// Listens to an [StateIterator], and updates the exposed
-/// [OffsetIteratorValue] whenever it changes.
-OffsetIteratorValue<T> Function(
-  StateIterator<T> stateIterator,
-) stateIteratorValueProvider<T>(
-  ProviderRef<OffsetIteratorValue<T>> ref,
+/// Listens to an [StateIterator], and updates the exposed state whenever it
+/// changes.
+T Function(StateIterator<T> stateIterator) stateIteratorValueProvider<T>(
+  ProviderRef<T> ref,
 ) =>
     (si) {
-      final cancel = si.iterator.listen((item) {
-        ref.state = OffsetIteratorValue._(item, si.iterator.hasMore());
-      }, onDone: () {
-        ref.state = OffsetIteratorValue._(ref.state.value, false);
-      });
-
+      final cancel = si.iterator.listen((item) => ref.state = item);
       ref.onDispose(cancel);
-
-      return OffsetIteratorValue._(
-        si.state,
-        si.iterator.hasMore(),
-      );
+      return si.state;
     };
