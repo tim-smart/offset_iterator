@@ -2,6 +2,10 @@ library offset_iterator_riverpod;
 
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:riverpod/riverpod.dart';
+import 'package:state_iterator/state_iterator.dart';
+
+export 'package:offset_iterator/offset_iterator.dart';
+export 'package:state_iterator/state_iterator.dart';
 
 OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
   ProviderRef<OffsetIterator<T>> ref,
@@ -12,13 +16,10 @@ OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
     };
 
 class OffsetIteratorValue<T> {
-  const OffsetIteratorValue._(this.value, this.hasMore, this._pull);
+  const OffsetIteratorValue._(this.value, this.hasMore);
 
-  final AsyncValue<T> value;
-  final Future<void> Function(int) _pull;
+  final T value;
   final bool hasMore;
-
-  Future<void> pull() => _pull(1);
 
   @override
   bool operator ==(Object other) {
@@ -32,12 +33,24 @@ class OffsetIteratorValue<T> {
   int get hashCode => Object.hash(runtimeType, value, hasMore);
 }
 
+class OffsetIteratorAsyncValue<T> extends OffsetIteratorValue<AsyncValue<T>> {
+  const OffsetIteratorAsyncValue._(
+    AsyncValue<T> value,
+    bool hasMore,
+    this._pull,
+  ) : super._(value, hasMore);
+
+  final Future<void> Function(int) _pull;
+
+  Future<void> pull() => _pull(1);
+}
+
 /// Pulls an [OffsetIterator] on demand, and exposes the most recently pulled
-/// [OffsetIteratorValue].
-OffsetIteratorValue<T> Function(
+/// [OffsetIteratorAsyncValue].
+OffsetIteratorAsyncValue<T> Function(
   OffsetIterator<T> iterator,
 ) iteratorValueProvider<T>(
-  ProviderRef<OffsetIteratorValue<T>> ref, {
+  ProviderRef<OffsetIteratorAsyncValue<T>> ref, {
   int initialDemand = 1,
 }) =>
     (iterator) {
@@ -51,7 +64,7 @@ OffsetIteratorValue<T> Function(
         }
 
         return Future.value(iterator.pull()).then((value) {
-          value.map((v) => ref.state = OffsetIteratorValue._(
+          value.map((v) => ref.state = OffsetIteratorAsyncValue._(
                 AsyncValue.data(v),
                 iterator.hasMore(),
                 doPull,
@@ -59,7 +72,7 @@ OffsetIteratorValue<T> Function(
 
           return doPull(remaining - 1);
         }).catchError((err, stack) {
-          ref.state = OffsetIteratorValue._(
+          ref.state = OffsetIteratorAsyncValue._(
             AsyncValue.error(err, stackTrace: stack),
             iterator.hasMore(),
             doPull,
@@ -69,7 +82,7 @@ OffsetIteratorValue<T> Function(
 
       doPull(initialDemand);
 
-      return OffsetIteratorValue._(
+      return OffsetIteratorAsyncValue._(
         iterator.value.match(
           (v) => AsyncValue.data(v),
           () => const AsyncValue.loading(),
@@ -81,34 +94,51 @@ OffsetIteratorValue<T> Function(
 
 /// Listens to an [OffsetIterator], and updates the exposed
 /// [OffsetIteratorValue] whenever it changes.
-OffsetIteratorValue<T> Function(
+OffsetIteratorValue<Option<T>> Function(
   OffsetIterator<T> iterator,
-) iteratorLatestValueProvider<T>(ProviderRef<OffsetIteratorValue<T>> ref) =>
+) iteratorLatestValueProvider<T>(
+  ProviderRef<OffsetIteratorValue<Option<T>>> ref,
+) =>
     (iterator) {
-      Future<void> pull(int i) => Future.value();
-
       final cancel = iterator.listen((item) {
-        ref.state = OffsetIteratorValue._(
-          AsyncValue.data(item),
-          iterator.hasMore(),
-          pull,
-        );
+        ref.state = OffsetIteratorValue._(Some(item), iterator.hasMore());
       }, onDone: () {
-        ref.state = OffsetIteratorValue._(
-          ref.state.value,
-          false,
-          pull,
-        );
+        ref.state = OffsetIteratorValue._(ref.state.value, false);
+      });
+
+      ref.onDispose(cancel);
+
+      return OffsetIteratorValue._(iterator.value, iterator.hasMore());
+    };
+
+/// Helper for creating a [StateIterator] provider.
+/// Calls `close` on dispose.
+StateIterator<T> Function(StateIterator<T> iterator) stateIteratorProvider<T>(
+  ProviderRef<OffsetIterator<T>> ref,
+) =>
+    (iterator) {
+      ref.onDispose(iterator.close);
+      return iterator;
+    };
+
+/// Listens to an [StateIterator], and updates the exposed
+/// [OffsetIteratorValue] whenever it changes.
+OffsetIteratorValue<T> Function(
+  StateIterator<T> stateIterator,
+) stateIteratorValueProvider<T>(
+  ProviderRef<OffsetIteratorValue<T>> ref,
+) =>
+    (si) {
+      final cancel = si.iterator.listen((item) {
+        ref.state = OffsetIteratorValue._(item, si.iterator.hasMore());
+      }, onDone: () {
+        ref.state = OffsetIteratorValue._(ref.state.value, false);
       });
 
       ref.onDispose(cancel);
 
       return OffsetIteratorValue._(
-        iterator.value.match(
-          (v) => AsyncValue.data(v),
-          () => const AsyncValue.loading(),
-        ),
-        iterator.hasMore(),
-        pull,
+        si.state,
+        si.iterator.hasMore(),
       );
     };
