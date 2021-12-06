@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
@@ -396,6 +398,34 @@ void main() {
         [7, 8, 9],
         [10],
       ]);
+    });
+  });
+
+  group('listen', () {
+    test('callbacks receive latest items', () async {
+      final results = <int>[];
+      final complete = Completer.sync();
+      final i = OffsetIterator.range(1, end: 5);
+
+      i.listen(results.add, onDone: complete.complete);
+
+      await complete.future;
+
+      expect(results, [1, 2, 3, 4, 5]);
+    });
+
+    test('cancel works', () async {
+      final results = <int>[];
+      final i = OffsetIterator.fromStream(Stream.fromIterable([1, 2, 3, 4, 5]));
+      late final void Function() cancel;
+      cancel = i.listen((i) {
+        results.add(i);
+        if (results.length == 2) cancel();
+      });
+
+      await i.run();
+
+      expect(results, [1, 2]);
     });
   });
 }
