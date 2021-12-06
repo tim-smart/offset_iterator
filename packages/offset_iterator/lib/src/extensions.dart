@@ -112,7 +112,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
   }) =>
       transform(
         pred,
-        name: toStringWithChild(name),
+        name: name,
         seed: generateSeed(override: seed),
         retention: retention,
         concurrency: concurrency,
@@ -130,7 +130,7 @@ extension MapExtension<T> on OffsetIterator<T> {
     return transform(
       (item) => [pred(item)],
       seed: () => (seed?.call() ?? const None()).map(pred),
-      name: toStringWithChild(name),
+      name: name,
       retention: retention,
     );
   }
@@ -146,7 +146,7 @@ extension AsyncMapExtension<T> on OffsetIterator<T> {
   }) =>
       transform(
         (item) => pred(item).then((v) => [v]),
-        name: toStringWithChild(name),
+        name: name,
         seed: seed,
         retention: retention,
         concurrency: concurrency,
@@ -168,7 +168,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
         acc = reducer(acc, item);
         return [acc];
       },
-      name: toStringWithChild(name),
+      name: name,
       seed: seed,
       retention: retention,
     );
@@ -187,7 +187,7 @@ extension TapExtension<T> on OffsetIterator<T> {
           effect(item);
           return [item];
         },
-        name: toStringWithChild(name),
+        name: name,
         seed: seed,
         retention: retention,
       );
@@ -219,7 +219,7 @@ extension DistinctExtension<T> on OffsetIterator<T> {
         if (seed != null) prev = seed();
         return prev;
       },
-      name: toStringWithChild(name),
+      name: name,
       retention: retention,
     );
   }
@@ -245,7 +245,7 @@ extension TakeWhileExtension<T> on OffsetIterator<T> {
         if (seed != null) prev = seed();
         return prev;
       },
-      name: toStringWithChild(name),
+      name: name,
       retention: retention,
     );
   }
@@ -260,7 +260,7 @@ extension TakeUntilExtension<T> on OffsetIterator<T> {
   }) =>
       takeWhile(
         (item, prev) => !predicate(item, prev),
-        name: toStringWithChild(name),
+        name: name,
         seed: seed,
         retention: retention,
       );
@@ -276,7 +276,7 @@ extension AccumulateExtension<T> on OffsetIterator<List<T>> {
       scan(
         [],
         (acc, chunk) => [...acc, ...chunk],
-        name: toStringWithChild(name),
+        name: name,
         seed: seed,
         retention: retention,
       );
@@ -291,7 +291,7 @@ extension AccumulateIListExtension<T> on OffsetIterator<IList<T>> {
       scan(
         IList(),
         (acc, chunk) => acc.addAll(chunk),
-        name: toStringWithChild(name),
+        name: name,
         seed: seed,
         retention: retention,
       );
