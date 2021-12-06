@@ -56,6 +56,7 @@ extension PersistExtension<T> on OffsetIterator<T> {
     required T Function(Object?) fromJson,
     SeedCallback<T>? fallbackSeed,
     int retention = 0,
+    String name = 'persist',
   }) {
     key = 'OffsetIterator_$key';
     final currentValue = _readCache(storage, cache, key, fromJson);
@@ -84,6 +85,7 @@ extension PersistExtension<T> on OffsetIterator<T> {
         return prev;
       },
       retention: retention,
+      name: toStringWithChild(name),
     );
   }
 }
@@ -97,6 +99,7 @@ extension PersistIListExtension<T> on OffsetIterator<IList<T>> {
     required T Function(Object?) fromJson,
     SeedCallback<IList<T>>? fallbackSeed,
     int retention = 0,
+    String name = 'persistIList',
   }) =>
       persist(
         storage: storage,
@@ -107,5 +110,6 @@ extension PersistIListExtension<T> on OffsetIterator<IList<T>> {
         fromJson: (json) => IList.fromJson(json, fromJson),
         fallbackSeed: fallbackSeed,
         retention: retention,
+        name: toStringWithChild(name),
       );
 }
