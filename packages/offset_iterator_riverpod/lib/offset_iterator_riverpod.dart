@@ -32,6 +32,8 @@ class OffsetIteratorValue<T> {
   int get hashCode => Object.hash(runtimeType, value, hasMore);
 }
 
+/// Pulls an [OffsetIterator] on demand, and exposes the most recently pulled
+/// [OffsetIteratorValue].
 OffsetIteratorValue<T> Function(
   OffsetIterator<T> iterator,
 ) iteratorValueProvider<T>(
@@ -74,5 +76,39 @@ OffsetIteratorValue<T> Function(
         ),
         iterator.hasMore(),
         doPull,
+      );
+    };
+
+/// Listens to an [OffsetIterator], and updates the exposed
+/// [OffsetIteratorValue] whenever it changes.
+OffsetIteratorValue<T> Function(
+  OffsetIterator<T> iterator,
+) iteratorLatestValueProvider<T>(ProviderRef<OffsetIteratorValue<T>> ref) =>
+    (iterator) {
+      Future<void> pull(int i) => Future.value();
+
+      final cancel = iterator.listen((item) {
+        ref.state = OffsetIteratorValue._(
+          AsyncValue.data(item),
+          iterator.hasMore(),
+          pull,
+        );
+      }, onDone: () {
+        ref.state = OffsetIteratorValue._(
+          ref.state.value,
+          false,
+          pull,
+        );
+      });
+
+      ref.onDispose(cancel);
+
+      return OffsetIteratorValue._(
+        iterator.value.match(
+          (v) => AsyncValue.data(v),
+          () => const AsyncValue.loading(),
+        ),
+        iterator.hasMore(),
+        pull,
       );
     };
