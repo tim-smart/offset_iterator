@@ -61,9 +61,9 @@ extension PersistExtension<T> on OffsetIterator<T> {
     key = 'OffsetIterator_$key';
     final currentValue = _readCache(storage, cache, key, fromJson);
     final write = _writeCache(storage, cache, key, toJson);
-    final seed = generateSeed(
-      override: () => currentValue,
-      fallback: fallbackSeed,
+    final seed = currentValue.match<SeedCallback<T>?>(
+      (v) => () => some(v),
+      () => generateSeed(fallback: fallbackSeed),
     );
     Option<T> prev = const None();
 
