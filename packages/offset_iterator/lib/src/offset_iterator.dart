@@ -173,7 +173,7 @@ class OffsetIterator<T> {
     if (state.hasMore == false) return const None();
 
     if (_processing) {
-      return _processingFuture.then((_) => pull(offset));
+      return _processingFuture.then((_) => _handleOffsetRequest(offset));
     }
 
     _processing = true;
