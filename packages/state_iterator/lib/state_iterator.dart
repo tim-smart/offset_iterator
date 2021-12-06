@@ -55,6 +55,10 @@ class StateIterator<State> {
 
   // ==== Public API
 
+  /// Get the current [State] value. Similar to using `iterator.valueOrNull`,
+  /// except it is garanteed to not be `null`.
+  State get state => _state;
+
   /// The [OffsetIterator<State>] controlled by the [StateIterator].
   /// This is the [OffsetIterator] you use in your application to watch for
   /// state changes.
