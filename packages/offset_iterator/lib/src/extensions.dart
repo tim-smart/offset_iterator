@@ -388,12 +388,11 @@ extension AccumulateIListExtension<T> on OffsetIterator<IList<T>> {
 
 extension HandleErrorExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> handleError(
-    FutureOr<bool?> Function(dynamic error, StackTrace stack) onError, {
+    FutureOr<bool?> Function(dynamic error, StackTrace stack, int retry)
+        onError, {
     String name = 'handleError',
     int retention = 0,
     int maxRetries = 5,
-    bool? cancelOnError,
-    bool bubbleCancellation = true,
   }) {
     final parent = this;
 
@@ -410,18 +409,22 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
           remainingRetries = maxRetries;
           chunk = item.match((v) => [v], () => []);
         } catch (err, stack) {
-          final retry = (await onError(err, stack)) ?? false;
-          remainingRetries = retry ? remainingRetries - 1 : 0;
+          final retryCount = maxRetries - (remainingRetries as int) + 1;
+          final retry = (await onError(err, stack, retryCount)) ?? false;
+
+          if (retry) {
+            chunk = const [];
+            remainingRetries = remainingRetries - 1;
+            if (remainingRetries == 0) rethrow;
+          }
         }
 
         return OffsetIteratorState(
           acc: remainingRetries,
-          chunk: chunk ?? [],
-          hasMore: remainingRetries == 0 ? false : !parent.drained,
+          chunk: chunk,
+          hasMore: parent.hasMore(),
         );
       },
-      cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
-      cancelOnError: cancelOnError ?? parent.cancelOnError,
     );
   }
 }

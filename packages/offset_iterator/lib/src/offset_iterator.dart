@@ -14,7 +14,7 @@ class OffsetIteratorState<T> {
   });
 
   final dynamic acc;
-  final Iterable<T> chunk;
+  final Iterable<T>? chunk;
   final bool hasMore;
   final dynamic error;
   final StackTrace? stackTrace;
@@ -240,7 +240,10 @@ class OffsetIterator<T> {
   FutureOr<Option<T>> _processNextState() {
     if (state.error != null) throw state.error;
 
-    final chunkLength = state.chunk.length;
+    final chunk = state.chunk;
+    if (chunk == null) return const None();
+
+    final chunkLength = chunk.length;
     if (chunkLength == 0) {
       if (state.hasMore == false) {
         return const None();
@@ -248,10 +251,10 @@ class OffsetIterator<T> {
 
       return _doProcessing(offset);
     } else if (chunkLength == 1) {
-      return _nextItem(state.chunk.first);
+      return _nextItem(chunk.first);
     }
 
-    buffer.addAll(state.chunk);
+    buffer.addAll(chunk);
 
     return _nextItem(buffer.removeFirst());
   }

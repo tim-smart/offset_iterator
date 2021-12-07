@@ -268,8 +268,7 @@ void main() {
   });
 
   group('handleError', () {
-    test(
-        'runs the handler on error and stops the iterator if it returns nothing',
+    test('runs the handler on error and returns None if it returns nothing',
         () async {
       var handled = false;
       final i = OffsetIterator<int>(
@@ -280,21 +279,25 @@ void main() {
           return OffsetIteratorState(
             acc: acc + 1,
             chunk: [acc],
-            hasMore: true,
+            hasMore: acc < 10,
           );
         },
         seed: () => some(-1),
-      ).handleError((err, stack) {
+      ).handleError((err, stack, retry) {
         handled = true;
       });
 
       expect(i.value, some(-1));
-      expect(await i.toList(), equals([0, 1, 2]));
+      expect(await i.pull(), some(0));
+      expect(await i.pull(), some(1));
+      expect(await i.pull(), some(2));
+      expect(await i.pull(), none());
+      expect(await i.toList(), equals([]));
       expect(handled, equals(true));
     });
 
     test('runs the handler on error and retries if true is returned', () async {
-      var retries = 0;
+      final retries = <int>[];
       final i = OffsetIterator<int>(
         init: () => 0,
         process: (acc) {
@@ -308,14 +311,16 @@ void main() {
         },
         seed: () => some(-1),
         cancelOnError: false,
-      ).handleError((err, stack) {
-        retries++;
+      ).handleError((err, stack, retry) {
+        retries.add(retry);
         return true;
       });
 
       expect(i.value, some(-1));
-      expect(await i.toList(), equals([0, 1]));
-      expect(retries, equals(5));
+      expect(await i.pull(), some(0));
+      expect(await i.pull(), some(1));
+      await expectLater(i.pull, throwsA('fail'));
+      expect(retries, [1, 2, 3, 4, 5]);
     });
   });
 
