@@ -82,12 +82,14 @@ class OffsetIteratorController<T> implements DrainableSink<T> {
     this.closeOnError = true,
     OffsetIteratorControllerTransform<T>? transform,
     SeedCallback<T>? seed,
+    int retention = 0,
   }) {
     final iter = OffsetIterator<T>(
       name: name,
       init: () {},
       process: _process,
       seed: seed,
+      retention: retention,
     );
     iterator = transform != null ? transform(iter) : iter;
   }

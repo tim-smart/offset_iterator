@@ -446,4 +446,36 @@ void main() {
       expect(results, [1, 2]);
     });
   });
+
+  group('wrapWithEither', () {
+    test('emits errors as Left<dynamic>', () async {
+      final i = OffsetIterator<int>(
+        init: () => 1,
+        process: (count) => count % 2 == 0
+            ? OffsetIteratorState(
+                acc: count + 1,
+                error: 'fail',
+                hasMore: true,
+              )
+            : OffsetIteratorState(
+                acc: count + 1,
+                chunk: [count],
+                hasMore: count < 9,
+              ),
+        cancelOnError: false,
+      ).wrapWithEither();
+
+      expect(await i.toList(), [
+        right(1),
+        left('fail'),
+        right(3),
+        left('fail'),
+        right(5),
+        left('fail'),
+        right(7),
+        left('fail'),
+        right(9),
+      ]);
+    });
+  });
 }

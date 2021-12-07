@@ -364,7 +364,7 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> handleError(
     FutureOr<bool?> Function(dynamic error, StackTrace stack) onError, {
     String name = 'handleError',
-    int? retention,
+    int retention = 0,
     int maxRetries = 5,
     bool bubbleCancellation = true,
   }) {
@@ -373,7 +373,7 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
     return OffsetIterator(
       name: toStringWithChild(name),
       seed: parent.generateSeed(),
-      retention: retention ?? parent.retention,
+      retention: retention,
       init: () => maxRetries,
       process: (remainingRetries) async {
         List<T>? chunk;
@@ -392,6 +392,60 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
           chunk: chunk ?? [],
           hasMore: remainingRetries == 0 ? false : !parent.drained,
         );
+      },
+      cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
+    );
+  }
+}
+
+extension EitherExtension<T> on OffsetIterator<T> {
+  /// Items ([T]) are emitted as [Right], errors are handled and emitted as
+  /// [Left].
+  OffsetIterator<Either<dynamic, T>> wrapWithEither({
+    String name = 'wrapWithEither',
+    int retention = 0,
+    bool bubbleCancellation = true,
+    SeedCallback<Either<dynamic, T>>? seed,
+  }) {
+    final parent = this;
+
+    assert(parent.cancelOnError == false);
+
+    final parentSeed = parent.generateSeed();
+    final seed = parentSeed != null ? (() => parentSeed().map(right)) : null;
+
+    OffsetIteratorState<Either<dynamic, T>> handleItem(Option<T> item) =>
+        OffsetIteratorState(
+          chunk: item is Some ? [Right((item as Some).value)] : const [],
+          hasMore: parent.hasMore(),
+        );
+
+    OffsetIteratorState<Either<dynamic, T>> handleError(
+      dynamic err,
+      StackTrace? stack,
+    ) =>
+        OffsetIteratorState(
+          chunk: [Left(err)],
+          hasMore: parent.hasMore(),
+        );
+
+    return OffsetIterator(
+      name: toStringWithChild(name),
+      seed: seed,
+      retention: retention,
+      process: (_) {
+        try {
+          final futureOr = parent.pull();
+
+          if (futureOr is Future) {
+            return (futureOr as Future<Option<T>>)
+                .then(handleItem)
+                .catchError(handleError);
+          }
+          return handleItem(futureOr);
+        } catch (err, stack) {
+          return handleError(err, stack);
+        }
       },
       cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
     );

@@ -69,13 +69,41 @@ void main() {
     test('it correctly drains the stream', () async {
       final i = OffsetIterator.fromStream(Stream.fromIterable([1, 2, 3, 4, 5]));
       expect(await i.toList(), equals([1, 2, 3, 4, 5]));
-    }, timeout: const Timeout(Duration(minutes: 5)));
+    });
 
     test('sets the seed if a ValueStream is provided', () async {
       final i = OffsetIterator.fromStream(
           Stream.fromIterable([1, 2, 3, 4, 5]).shareValueSeeded(0));
       expect(i.value, some(0));
       expect(await i.toList(), equals([1, 2, 3, 4, 5]));
+    });
+
+    test('cancelOnError works', () async {
+      final i = OffsetIterator.fromStream(Stream.fromIterable([1, 2, 3, 4, 5])
+          .asyncExpand((i) => i == 2 ? Stream.error('fail') : Stream.value(i)));
+
+      expect(await i.pull(), equals(some(1)));
+      await expectLater(i.pull, throwsA('fail'));
+      expect(i.drained, true);
+    });
+
+    test('cancelOnError false works', () async {
+      final i = OffsetIterator.fromStream(
+        Stream.fromIterable([1, 2, 3, 4, 5]).asyncExpand(
+            (i) => i == 2 ? Stream.error('fail') : Stream.value(i)),
+        cancelOnError: false,
+      ).wrapWithEither();
+
+      expect(
+        await i.toList(),
+        [
+          right(1),
+          left('fail'),
+          right(3),
+          right(4),
+          right(5),
+        ],
+      );
     });
   });
 

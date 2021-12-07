@@ -196,7 +196,7 @@ packages:
       name: offset_iterator
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.0.49"
+    version: "0.0.51"
   package_config:
     dependency: transitive
     description:
@@ -231,7 +231,7 @@ packages:
       name: riverpod
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "1.0.1"
+    version: "1.0.2"
   shelf:
     dependency: transitive
     description:

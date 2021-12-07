@@ -388,6 +388,7 @@ class OffsetIterator<T> {
     int retention = 0,
     SeedCallback<T>? seed,
     String name = 'OffsetIterator.fromStream',
+    bool cancelOnError = true,
   }) {
     final valueStreamSeed =
         Option.tryCatch(() => (stream as dynamic).valueOrNull as T?)
@@ -398,22 +399,35 @@ class OffsetIterator<T> {
       () => stream,
     );
 
+    final eitherStream =
+        stream.transform(StreamTransformer<T, Either<dynamic, T>>.fromHandlers(
+      handleData: (data, sink) => sink.add(Right(data)),
+      handleError: (error, stack, sink) => sink.add(Left(error)),
+    ));
+
     return OffsetIterator(
       name: name,
-      init: () => StreamIterator(stream),
+      init: () => StreamIterator(eitherStream),
       process: (i) async {
-        final iter = i as StreamIterator<T>;
+        final iter = i as StreamIterator<Either<dynamic, T>>;
         final available = await iter.moveNext();
 
+        if (!available) {
+          return OffsetIteratorState(acc: iter, hasMore: false);
+        }
+
+        final value = iter.current;
         return OffsetIteratorState(
           acc: iter,
-          chunk: available ? [iter.current] : [],
+          chunk: value is Right ? [(value as Right).value] : const [],
+          error: value is Left ? (value as Left).value : null,
           hasMore: available,
         );
       },
-      cleanup: (i) => (i as StreamIterator<T>).cancel(),
+      cleanup: (i) => (i as StreamIterator).cancel(),
       seed: seed ?? () => valueStreamSeed,
       retention: retention,
+      cancelOnError: cancelOnError,
     );
   }
 
