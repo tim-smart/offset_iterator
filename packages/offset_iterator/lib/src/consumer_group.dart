@@ -45,7 +45,7 @@ class ConsumerGroup<T> {
         _childPulledOffset(i, offset);
         return OffsetIteratorState(
           acc: offset + 1,
-          chunk: item.match((v) => [v], () => []),
+          chunk: item.map((v) => [v]).toNullable(),
           hasMore: iterator.hasMore(offset + 1),
         );
       },

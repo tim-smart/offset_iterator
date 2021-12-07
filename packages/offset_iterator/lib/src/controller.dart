@@ -174,8 +174,6 @@ class OffsetIteratorController<T> implements DrainableSink<T> {
       final error = _assignNextItem() as _Error<T>;
 
       return OffsetIteratorState(
-        acc: null,
-        chunk: [],
         hasMore: !closeOnError,
         error: error.error,
         stackTrace: error.stackTrace,
@@ -198,7 +196,6 @@ class OffsetIteratorController<T> implements DrainableSink<T> {
     }
 
     return OffsetIteratorState(
-      acc: null,
       chunk: chunk,
       hasMore: hasMore,
     );

@@ -285,12 +285,12 @@ void main() {
         seed: () => some(-1),
       ).handleError((err, stack, retry) {
         handled = true;
-      });
+      }).map((i) => i * 2);
 
-      expect(i.value, some(-1));
+      expect(i.value, some(-2));
       expect(await i.pull(), some(0));
-      expect(await i.pull(), some(1));
       expect(await i.pull(), some(2));
+      expect(await i.pull(), some(4));
       expect(await i.pull(), none());
       expect(await i.toList(), equals([]));
       expect(handled, equals(true));

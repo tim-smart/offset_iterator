@@ -27,7 +27,7 @@ extension StartFromExtension<T> on OffsetIterator<T> {
         if (futureOr is! Future) {
           return OffsetIteratorState(
             acc: offset + 1,
-            chunk: futureOr is Some ? [(futureOr as Some).value] : const [],
+            chunk: futureOr is Some ? [(futureOr as Some).value] : null,
             hasMore: parent.hasMore(offset + 1),
           );
         }
@@ -35,7 +35,7 @@ extension StartFromExtension<T> on OffsetIterator<T> {
         return (futureOr as Future<Option<T>>)
             .then((item) => OffsetIteratorState(
                   acc: offset + 1,
-                  chunk: item is Some ? [(item as Some).value] : const [],
+                  chunk: item is Some ? [(item as Some).value] : null,
                   hasMore: parent.hasMore(offset + 1),
                 ));
       },
@@ -68,7 +68,7 @@ FutureOr<OffsetIteratorState<R>> Function<R>(
       final hasMore = item.isSome() && chunk != null;
 
       return OffsetIteratorState(
-        chunk: chunk ?? [],
+        chunk: chunk ?? const [],
         hasMore: hasMore && parent.hasMore(),
       );
     };
@@ -214,7 +214,7 @@ extension BufferExtension<T> on OffsetIterator<T> {
     return OffsetIterator(
       name: toStringWithChild(name),
       process: (_) async {
-        var buffer = <T>[];
+        final buffer = <T>[];
         var remaining = count;
 
         while (remaining > 0) {
@@ -284,7 +284,7 @@ extension DistinctExtension<T> on OffsetIterator<T> {
 
         final duplicate = eq((prev as Some).value, item);
         prev = Some(item);
-        return duplicate ? [] : [item];
+        return duplicate ? const [] : [item];
       },
       seed: () {
         if (seed != null) prev = seed();
@@ -357,7 +357,7 @@ extension AccumulateExtension<T> on OffsetIterator<List<T>> {
     bool bubbleCancellation = true,
   }) =>
       scan(
-        [],
+        const [],
         (acc, chunk) => [...acc, ...chunk],
         name: name,
         seed: seed,
@@ -407,7 +407,7 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
         try {
           final item = await parent.pull();
           remainingRetries = maxRetries;
-          chunk = item.match((v) => [v], () => []);
+          chunk = item.map((v) => [v]).toNullable();
         } catch (err, stack) {
           final retryCount = maxRetries - (remainingRetries as int) + 1;
           final retry = (await onError(err, stack, retryCount)) ?? false;
@@ -446,7 +446,7 @@ extension EitherExtension<T> on OffsetIterator<T> {
 
     OffsetIteratorState<Either<dynamic, T>> handleItem(Option<T> item) =>
         OffsetIteratorState(
-          chunk: item is Some ? [Right((item as Some).value)] : const [],
+          chunk: item is Some ? [Right((item as Some).value)] : null,
           hasMore: parent.hasMore(),
         );
 
@@ -509,7 +509,7 @@ extension PrefetchExtension<T> on OffsetIterator<T> {
 
         return OffsetIteratorState(
           acc: newOffset,
-          chunk: item is Some ? [(item as Some).value] : [],
+          chunk: item is Some ? [(item as Some).value] : null,
           hasMore: hasMore,
         );
       },
@@ -548,7 +548,7 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
 
           return OffsetIteratorState(
             acc: childHasMore ? child : null,
-            chunk: item.match((v) => [v], () => []),
+            chunk: item.map((v) => [v]).toNullable(),
             hasMore: childHasMore || parent.hasMore(),
           );
         }
@@ -598,7 +598,7 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
         await fillQueue();
 
         return OffsetIteratorState(
-          chunk: chunk ?? [],
+          chunk: chunk ?? const [],
           hasMore: chunk != null && queue.isNotEmpty,
         );
       },
@@ -689,7 +689,7 @@ extension ToIListExtension<T> on OffsetIterator<T> {
 }
 
 extension ToListExtension<T> on OffsetIterator<T> {
-  Future<List<T>> toList() => fold([], (acc, item) {
+  Future<List<T>> toList() => fold(const [], (acc, item) {
         acc.add(item);
         return acc;
       });
