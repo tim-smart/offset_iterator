@@ -107,6 +107,26 @@ void main() {
     });
   });
 
+  group('OffsetIterator.fromStreamEither', () {
+    test('emits items and errors as Either', () async {
+      final i = OffsetIterator.fromStreamEither(
+        Stream.fromIterable([1, 2, 3, 4, 5]).asyncExpand(
+            (i) => i == 2 ? Stream.error('fail') : Stream.value(i)),
+      );
+
+      expect(
+        await i.toList(),
+        [
+          right(1),
+          left('fail'),
+          right(3),
+          right(4),
+          right(5),
+        ],
+      );
+    });
+  });
+
   group('OffsetIterator.fromIterable', () {
     test('it correctly drains the iterable', () async {
       final i = OffsetIterator.fromIterable([1, 2, 3, 4, 5]);
