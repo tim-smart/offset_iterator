@@ -383,12 +383,13 @@ class OffsetIterator<T> {
   /// Create an `OffsetIterator` from the provided `Stream`.
   /// If a `ValueStream` with a seed is given, it will populate the iterator's
   /// seed value.
-  static OffsetIterator<T> fromStream<T>(
+  ///
+  /// Items are wrapped in [Either], so errors don't cancel the subscription.
+  static OffsetIterator<Either<dynamic, T>> fromStreamEither<T>(
     Stream<T> stream, {
     int retention = 0,
-    SeedCallback<T>? seed,
-    String name = 'OffsetIterator.fromStream',
-    bool cancelOnError = true,
+    SeedCallback<Either<dynamic, T>>? seed,
+    String name = 'OffsetIterator.fromStreamEither',
   }) {
     final valueStreamSeed =
         Option.tryCatch(() => (stream as dynamic).valueOrNull as T?)
@@ -416,19 +417,38 @@ class OffsetIterator<T> {
           return OffsetIteratorState(acc: iter, hasMore: false);
         }
 
-        final value = iter.current;
         return OffsetIteratorState(
           acc: iter,
-          chunk: value is Right ? [(value as Right).value] : const [],
-          error: value is Left ? (value as Left).value : null,
+          chunk: [iter.current],
           hasMore: available,
         );
       },
       cleanup: (i) => (i as StreamIterator).cancel(),
-      seed: seed ?? () => valueStreamSeed,
+      seed: seed ?? () => valueStreamSeed.map(right),
       retention: retention,
-      cancelOnError: cancelOnError,
     );
+  }
+
+  /// Create an `OffsetIterator` from the provided `Stream`.
+  /// If a `ValueStream` with a seed is given, it will populate the iterator's
+  /// seed value.
+  static OffsetIterator<T> fromStream<T>(
+    Stream<T> stream, {
+    int retention = 0,
+    SeedCallback<T>? seed,
+    String name = 'OffsetIterator.fromStream',
+    bool cancelOnError = true,
+  }) {
+    final eitherSeed = seed != null ? () => seed().map(right) : null;
+
+    return fromStreamEither<T>(
+      stream,
+      seed: eitherSeed,
+      name: name,
+    ).map((e) {
+      if (e is Left) throw (e as Left).value;
+      return (e as Right<dynamic, T>).value;
+    }, cancelOnError: cancelOnError, retention: retention);
   }
 
   /// Create an `OffsetIterator` from the provided `Iterable`.
