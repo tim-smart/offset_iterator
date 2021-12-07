@@ -10,6 +10,7 @@ extension StartFromExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> startFrom(
     int? offset, {
     String name = 'startFrom',
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) {
     final parent = this;
@@ -39,6 +40,7 @@ extension StartFromExtension<T> on OffsetIterator<T> {
                 ));
       },
       cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
+      cancelOnError: cancelOnError,
       seed: parent.generateSeed(startOffset: offset),
     );
   }
@@ -78,6 +80,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
     SeedCallback<R>? seed,
     int retention = 0,
     int concurrency = 1,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) {
     if (concurrency > 1) {
@@ -102,6 +105,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
             : handleItem(itemFuture, itemFuture.map(pred).toNullable());
       },
       cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
+      cancelOnError: cancelOnError,
       seed: seed,
       retention: retention,
     );
@@ -113,6 +117,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
     SeedCallback<T>? seed,
     int retention = 0,
     int concurrency = 1,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) =>
       transform(
@@ -122,6 +127,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
         retention: retention,
         concurrency: concurrency,
         bubbleCancellation: bubbleCancellation,
+        cancelOnError: cancelOnError,
       );
 }
 
@@ -130,6 +136,7 @@ extension MapExtension<T> on OffsetIterator<T> {
     R Function(T) pred, {
     String name = 'map',
     int retention = 0,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) {
     final seed = generateSeed();
@@ -140,6 +147,7 @@ extension MapExtension<T> on OffsetIterator<T> {
       name: name,
       retention: retention,
       bubbleCancellation: bubbleCancellation,
+      cancelOnError: cancelOnError,
     );
   }
 }
@@ -151,6 +159,7 @@ extension AsyncMapExtension<T> on OffsetIterator<T> {
     SeedCallback<R>? seed,
     int retention = 0,
     int concurrency = 1,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) =>
       transform(
@@ -160,6 +169,7 @@ extension AsyncMapExtension<T> on OffsetIterator<T> {
         retention: retention,
         concurrency: concurrency,
         bubbleCancellation: bubbleCancellation,
+        cancelOnError: cancelOnError,
       );
 }
 
@@ -170,6 +180,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
     String name = 'scan',
     SeedCallback<R>? seed,
     int retention = 0,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) {
     R acc = initialValue;
@@ -183,6 +194,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
       seed: seed,
       retention: retention,
       bubbleCancellation: bubbleCancellation,
+      cancelOnError: cancelOnError,
     );
   }
 }
@@ -194,6 +206,7 @@ extension BufferExtension<T> on OffsetIterator<T> {
     String name = 'bufferCount',
     SeedCallback<T>? seed,
     int retention = 0,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) {
     final parent = this;
@@ -222,6 +235,7 @@ extension BufferExtension<T> on OffsetIterator<T> {
         );
       },
       cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
+      cancelOnError: cancelOnError,
     );
   }
 }
@@ -232,6 +246,7 @@ extension TapExtension<T> on OffsetIterator<T> {
     String name = 'tap',
     SeedCallback<T>? seed,
     int retention = 0,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) =>
       transformIdentical(
@@ -243,6 +258,7 @@ extension TapExtension<T> on OffsetIterator<T> {
         seed: seed,
         retention: retention,
         bubbleCancellation: bubbleCancellation,
+        cancelOnError: cancelOnError,
       );
 }
 
@@ -252,6 +268,7 @@ extension DistinctExtension<T> on OffsetIterator<T> {
     String name = 'distinct',
     SeedCallback<T>? seed,
     int retention = 0,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) {
     bool Function(T, T) eq = equals ?? (prev, next) => prev == next;
@@ -276,6 +293,7 @@ extension DistinctExtension<T> on OffsetIterator<T> {
       name: name,
       retention: retention,
       bubbleCancellation: bubbleCancellation,
+      cancelOnError: cancelOnError,
     );
   }
 }
@@ -286,6 +304,7 @@ extension TakeWhileExtension<T> on OffsetIterator<T> {
     String name = 'takeWhile',
     SeedCallback<T>? seed,
     int retention = 0,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) {
     Option<T> prev = const None();
@@ -304,6 +323,7 @@ extension TakeWhileExtension<T> on OffsetIterator<T> {
       name: name,
       retention: retention,
       bubbleCancellation: bubbleCancellation,
+      cancelOnError: cancelOnError,
     );
   }
 }
@@ -314,6 +334,7 @@ extension TakeUntilExtension<T> on OffsetIterator<T> {
     String name = 'takeUntil',
     SeedCallback<T>? seed,
     int retention = 0,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) =>
       takeWhile(
@@ -322,6 +343,7 @@ extension TakeUntilExtension<T> on OffsetIterator<T> {
         seed: seed,
         retention: retention,
         bubbleCancellation: bubbleCancellation,
+        cancelOnError: cancelOnError,
       );
 }
 
@@ -331,6 +353,7 @@ extension AccumulateExtension<T> on OffsetIterator<List<T>> {
     String name = 'accumulate',
     SeedCallback<List<T>>? seed,
     int retention = 0,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) =>
       scan(
@@ -340,6 +363,7 @@ extension AccumulateExtension<T> on OffsetIterator<List<T>> {
         seed: seed,
         retention: retention,
         bubbleCancellation: bubbleCancellation,
+        cancelOnError: cancelOnError,
       );
 }
 
@@ -348,6 +372,7 @@ extension AccumulateIListExtension<T> on OffsetIterator<IList<T>> {
     String name = 'accumulateIList',
     SeedCallback<IList<T>>? seed,
     int retention = 0,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) =>
       scan(
@@ -357,6 +382,7 @@ extension AccumulateIListExtension<T> on OffsetIterator<IList<T>> {
         seed: seed,
         retention: retention,
         bubbleCancellation: bubbleCancellation,
+        cancelOnError: cancelOnError,
       );
 }
 
@@ -366,6 +392,7 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
     String name = 'handleError',
     int retention = 0,
     int maxRetries = 5,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) {
     final parent = this;
@@ -394,6 +421,7 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
         );
       },
       cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
+      cancelOnError: cancelOnError,
     );
   }
 }
@@ -404,12 +432,11 @@ extension EitherExtension<T> on OffsetIterator<T> {
   OffsetIterator<Either<dynamic, T>> wrapWithEither({
     String name = 'wrapWithEither',
     int retention = 0,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
     SeedCallback<Either<dynamic, T>>? seed,
   }) {
     final parent = this;
-
-    assert(parent.cancelOnError == false);
 
     final parentSeed = parent.generateSeed();
     final seed = parentSeed != null ? (() => parentSeed().map(right)) : null;
@@ -448,6 +475,7 @@ extension EitherExtension<T> on OffsetIterator<T> {
         }
       },
       cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
+      cancelOnError: cancelOnError,
     );
   }
 }
@@ -459,6 +487,7 @@ extension PrefetchExtension<T> on OffsetIterator<T> {
   /// before the child needs it.
   OffsetIterator<T> prefetch({
     String name = 'prefetch',
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) {
     final parent = this;
@@ -482,6 +511,7 @@ extension PrefetchExtension<T> on OffsetIterator<T> {
         );
       },
       cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
+      cancelOnError: cancelOnError,
     );
   }
 }
@@ -492,6 +522,7 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
     String name = 'flatMap',
     int retention = 0,
     SeedCallback<R>? seed,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) {
     final parent = this;
@@ -525,6 +556,7 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
         );
       },
       cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
+      cancelOnError: cancelOnError,
       seed: seed,
       retention: retention,
     );
@@ -538,6 +570,7 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
     required int concurrency,
     SeedCallback<R>? seed,
     int retention = 0,
+    bool cancelOnError = true,
     bool bubbleCancellation = true,
   }) {
     final parent = this;
@@ -567,6 +600,7 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
         );
       },
       cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
+      cancelOnError: cancelOnError,
       seed: seed,
       retention: retention,
     );
