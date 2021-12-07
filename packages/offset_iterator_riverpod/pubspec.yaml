@@ -1,6 +1,6 @@
 name: offset_iterator_riverpod
 description: Helper functions for creating RiverPod providers for OffsetIterator's.
-version: 0.0.14
+version: 0.0.14+1
 homepage: https://github.com/tim-smart/offset_iterator
 
 environment:
