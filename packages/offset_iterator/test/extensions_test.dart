@@ -307,6 +307,7 @@ void main() {
           );
         },
         seed: () => some(-1),
+        cancelOnError: false,
       ).handleError((err, stack) {
         retries++;
         return true;

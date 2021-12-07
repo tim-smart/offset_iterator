@@ -370,7 +370,7 @@ void main() {
   });
 
   group('cancelOnError', () {
-    test('is set to true if cleanup is provided', () async {
+    test('is true by default', () async {
       final i = OffsetIterator(
         init: () {},
         process: (_) => const OffsetIteratorState(
@@ -379,7 +379,6 @@ void main() {
           hasMore: true,
           error: 'fail',
         ),
-        cleanup: (_) {},
       );
 
       expect(i.cancelOnError, true);
@@ -390,7 +389,7 @@ void main() {
       expect(i.state.error, 'fail');
     });
 
-    test('it defaults to false', () async {
+    test('when false does not cancel the iterator', () async {
       final i = OffsetIterator(
         init: () {},
         process: (_) => const OffsetIteratorState(
@@ -399,6 +398,7 @@ void main() {
           hasMore: true,
           error: 'fail',
         ),
+        cancelOnError: false,
       );
 
       expect(i.cancelOnError, false);

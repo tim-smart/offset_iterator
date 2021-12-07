@@ -39,13 +39,12 @@ class OffsetIterator<T> {
     CleanupCallback? cleanup,
     SeedCallback<T>? seed,
     this.retention = 0,
-    bool? cancelOnError,
+    this.cancelOnError = true,
     String? name,
   })  : _init = init,
         _process = process,
         _seed = seed,
-        name = name ?? 'OffsetIterator',
-        cancelOnError = cancelOnError ?? cleanup != null {
+        name = name ?? 'OffsetIterator' {
     _cleanup = cleanup ?? (_) {};
   }
 
