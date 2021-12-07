@@ -56,7 +56,6 @@ extension PersistExtension<T> on OffsetIterator<T> {
     int retention = 0,
     String name = 'persist',
   }) {
-    key = 'OffsetIterator_$key';
     final currentValue = _readCache(storage, cache, key, fromJson);
     final write = _writeCache(storage, cache, key, toJson);
     final seed = currentValue.match<SeedCallback<T>?>(
