@@ -7,9 +7,9 @@ import 'package:offset_iterator_riverpod/offset_iterator_riverpod.dart';
 typedef Post = Map<String, dynamic>;
 
 /// Function that fetches a page of posts
-Future<List<Post>> fetchPosts(int page) =>
+Future<List<Post>> fetchPosts(int page, int limit) =>
     Dio().get('https://jsonplaceholder.typicode.com/posts', queryParameters: {
-      '_limit': '15',
+      '_limit': '$limit',
       '_page': '$page',
     }).then((r) => List<Post>.from(r.data));
 
@@ -18,11 +18,11 @@ OffsetIterator<List<Post>> postsIterator() => OffsetIterator(
       init: () => 1,
       process: (page) async {
         print('Fetching page $page...');
-        final posts = await fetchPosts(page);
+        final posts = await fetchPosts(page, 30);
         return OffsetIteratorState(
-          acc: page + 1,
-          chunk: [posts],
-          hasMore: posts.isNotEmpty,
+          acc: page + 1, // Increment the page number
+          chunk: [posts], // Emit the list of posts
+          hasMore: posts.length == 30, // Stop if we only receive a partial page
         );
       },
     )
@@ -51,8 +51,12 @@ class PostsListContainer extends ConsumerWidget {
         hasMore: state.hasMore,
         loadMore: state.pull,
       ),
-      error: (err, stack) => Center(child: Text('Error: $err')),
-      loading: () => const Center(child: Text('Loading...')),
+      error: (err, stack) => SliverFillRemaining(
+        child: Center(child: Text('Error: $err')),
+      ),
+      loading: () => const SliverFillRemaining(
+        child: Center(child: Text('Loading...')),
+      ),
     );
   }
 }
@@ -74,21 +78,23 @@ class PostsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      itemBuilder: (context, index) {
-        final post = posts[index];
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final post = posts[index];
 
-        // At the end of the list load more posts
-        if (hasMore && index == postsLength - 1) {
-          loadMore();
-        }
+          // At the end of the list load more posts
+          if (hasMore && index == postsLength - 1) {
+            loadMore();
+          }
 
-        return ListTile(
-          title: Text(post['title']),
-          subtitle: Text(post['body']),
-        );
-      },
-      itemCount: postsLength,
+          return ListTile(
+            title: Text(post['title']),
+            subtitle: Text(post['body']),
+          );
+        },
+        childCount: postsLength,
+      ),
     );
   }
 }
@@ -115,17 +121,39 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class MyHomePage extends ConsumerWidget {
   const MyHomePage({Key? key, required this.title}) : super(key: key);
   final String title;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => ref.refresh(postsProvider),
+        child: const Icon(Icons.refresh),
       ),
-      body: const PostsListContainer(),
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            title: Text(title),
+            floating: true,
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(
+                bottom: 5,
+                left: 16,
+                top: 25,
+              ),
+              child: Text('Posts:', style: theme.textTheme.headline5!),
+            ),
+          ),
+          const PostsListContainer(),
+          const SliverToBoxAdapter(child: SizedBox(height: 30)),
+        ],
+      ),
     );
   }
 }
