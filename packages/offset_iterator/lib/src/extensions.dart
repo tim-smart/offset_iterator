@@ -127,7 +127,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
         retention: retention,
         concurrency: concurrency,
         bubbleCancellation: bubbleCancellation,
-        cancelOnError: cancelOnError ?? this.cancelOnError,
+        cancelOnError: cancelOnError,
       );
 }
 
@@ -147,7 +147,7 @@ extension MapExtension<T> on OffsetIterator<T> {
       name: name,
       retention: retention,
       bubbleCancellation: bubbleCancellation,
-      cancelOnError: cancelOnError ?? this.cancelOnError,
+      cancelOnError: cancelOnError,
     );
   }
 }
@@ -169,7 +169,7 @@ extension AsyncMapExtension<T> on OffsetIterator<T> {
         retention: retention,
         concurrency: concurrency,
         bubbleCancellation: bubbleCancellation,
-        cancelOnError: cancelOnError ?? this.cancelOnError,
+        cancelOnError: cancelOnError,
       );
 }
 
@@ -194,7 +194,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
       seed: seed,
       retention: retention,
       bubbleCancellation: bubbleCancellation,
-      cancelOnError: cancelOnError ?? this.cancelOnError,
+      cancelOnError: cancelOnError,
     );
   }
 }
@@ -258,7 +258,7 @@ extension TapExtension<T> on OffsetIterator<T> {
         seed: seed,
         retention: retention,
         bubbleCancellation: bubbleCancellation,
-        cancelOnError: cancelOnError ?? this.cancelOnError,
+        cancelOnError: cancelOnError,
       );
 }
 
@@ -293,7 +293,7 @@ extension DistinctExtension<T> on OffsetIterator<T> {
       name: name,
       retention: retention,
       bubbleCancellation: bubbleCancellation,
-      cancelOnError: cancelOnError ?? this.cancelOnError,
+      cancelOnError: cancelOnError,
     );
   }
 }
@@ -323,7 +323,7 @@ extension TakeWhileExtension<T> on OffsetIterator<T> {
       name: name,
       retention: retention,
       bubbleCancellation: bubbleCancellation,
-      cancelOnError: cancelOnError ?? this.cancelOnError,
+      cancelOnError: cancelOnError,
     );
   }
 }
@@ -343,7 +343,7 @@ extension TakeUntilExtension<T> on OffsetIterator<T> {
         seed: seed,
         retention: retention,
         bubbleCancellation: bubbleCancellation,
-        cancelOnError: cancelOnError ?? this.cancelOnError,
+        cancelOnError: cancelOnError,
       );
 }
 
@@ -363,7 +363,7 @@ extension AccumulateExtension<T> on OffsetIterator<List<T>> {
         seed: seed,
         retention: retention,
         bubbleCancellation: bubbleCancellation,
-        cancelOnError: cancelOnError ?? this.cancelOnError,
+        cancelOnError: cancelOnError,
       );
 }
 
@@ -382,7 +382,7 @@ extension AccumulateIListExtension<T> on OffsetIterator<IList<T>> {
         seed: seed,
         retention: retention,
         bubbleCancellation: bubbleCancellation,
-        cancelOnError: cancelOnError ?? this.cancelOnError,
+        cancelOnError: cancelOnError,
       );
 }
 
