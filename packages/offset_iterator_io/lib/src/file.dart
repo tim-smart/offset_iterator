@@ -34,8 +34,9 @@ extension WriteToFile on OffsetIterator<List<int>> {
     File file, {
     FileMode mode = FileMode.writeOnly,
     String name = 'writeToFile',
+    bool bubbleCancellation = true,
   }) {
-    final parent = prefetch();
+    final parent = prefetch(bubbleCancellation: true);
 
     return OffsetIterator(
       name: toStringWithChild(name),
@@ -53,7 +54,10 @@ extension WriteToFile on OffsetIterator<List<int>> {
           hasMore: parent.hasMore(),
         );
       },
-      cleanup: (file) => file.close(),
+      cleanup: parent.generateCleanup(
+        cleanup: (file) => file.close(),
+        bubbleCancellation: bubbleCancellation,
+      ),
     );
   }
 }

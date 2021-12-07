@@ -8,8 +8,13 @@ extension EncodeExtension on OffsetIterator<String> {
   OffsetIterator<List<int>> encode({
     Encoding encoding = utf8,
     String name = 'encode',
+    bool bubbleCancellation = true,
   }) =>
-      map(encoding.encode, name: name);
+      map(
+        encoding.encode,
+        name: name,
+        bubbleCancellation: bubbleCancellation,
+      );
 }
 
 extension DecodeExtension on OffsetIterator<List<int>> {
@@ -18,6 +23,11 @@ extension DecodeExtension on OffsetIterator<List<int>> {
   OffsetIterator<String> decode({
     Encoding encoding = utf8,
     String name = 'decode',
+    bool bubbleCancellation = true,
   }) =>
-      map(encoding.decode, name: name);
+      map(
+        encoding.decode,
+        name: name,
+        bubbleCancellation: bubbleCancellation,
+      );
 }
