@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
@@ -15,7 +13,7 @@ Option<T> _readCache<T>(
 
   final data = storage
       .read(key)
-      .flatMap((json) => Option.tryCatch(() => fromJson(jsonDecode(json))));
+      .flatMap((json) => Option.tryCatch(() => fromJson(json)));
   cache?[key] = data;
   return data;
 }
@@ -28,7 +26,7 @@ void Function(T) _writeCache<T>(
 ) =>
     (value) {
       try {
-        storage.write(key, jsonEncode(toJson(value)));
+        storage.write(key, toJson(value));
       } catch (_) {}
       cache?[key] = some(value);
     };

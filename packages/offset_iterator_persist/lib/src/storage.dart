@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
@@ -39,7 +40,8 @@ class HiveStorage implements Storage {
               final dir = await getTemporaryDirectory();
               if (!kIsWeb) hive.init(dir.path);
 
-              final box = await hive.openBox<dynamic>('persisted_bloc_stream');
+              final box =
+                  await hive.openBox<dynamic>('offset_iterator_persist');
 
               final instance = HiveStorage._(box);
               _instance = some(instance);
@@ -85,14 +87,19 @@ class SharedPreferencesStorage implements Storage {
 
   final SharedPreferences _prefs;
 
-  String _prefixKey(String key) => 'pbs_$key';
+  String _prefixKey(String key) => 'oip_$key';
 
   @override
-  Option<dynamic> read(String key) => optionOf(_prefs.get(_prefixKey(key)));
+  Option<dynamic> read(String key) =>
+      optionOf(_prefs.getString(_prefixKey(key)))
+          .flatMap((json) => Option.tryCatch(() => jsonDecode(json)));
 
   @override
   Future<bool> write(String key, dynamic value) =>
-      _lock.synchronized(() => _prefs.setString(_prefixKey(key), value));
+      _lock.synchronized(() => Option.tryCatch(() => jsonEncode(value)).match(
+            (json) => _prefs.setString(_prefixKey(key), json),
+            () => false,
+          ));
 
   @override
   Future<bool> delete(String key) =>
