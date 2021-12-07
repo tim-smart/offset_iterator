@@ -55,6 +55,7 @@ extension PersistExtension<T> on OffsetIterator<T> {
     SeedCallback<T>? fallbackSeed,
     int retention = 0,
     String name = 'persist',
+    bool bubbleCancellation = true,
   }) {
     final currentValue = _readCache(storage, cache, key, fromJson);
     final write = _writeCache(storage, cache, key, toJson);
@@ -83,6 +84,7 @@ extension PersistExtension<T> on OffsetIterator<T> {
       },
       retention: retention,
       name: name,
+      bubbleCancellation: bubbleCancellation,
     );
   }
 }
@@ -97,6 +99,7 @@ extension PersistIListExtension<T> on OffsetIterator<IList<T>> {
     SeedCallback<IList<T>>? fallbackSeed,
     int retention = 0,
     String name = 'persistIList',
+    bool bubbleCancellation = true,
   }) =>
       persist(
         storage: storage,
@@ -108,5 +111,6 @@ extension PersistIListExtension<T> on OffsetIterator<IList<T>> {
         fallbackSeed: fallbackSeed,
         retention: retention,
         name: name,
+        bubbleCancellation: bubbleCancellation,
       );
 }
