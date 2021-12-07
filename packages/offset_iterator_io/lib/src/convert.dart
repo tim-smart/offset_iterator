@@ -9,11 +9,13 @@ extension EncodeExtension on OffsetIterator<String> {
     Encoding encoding = utf8,
     String name = 'encode',
     bool bubbleCancellation = true,
+    bool? cancelOnError,
   }) =>
       map(
         encoding.encode,
         name: name,
         bubbleCancellation: bubbleCancellation,
+        cancelOnError: cancelOnError,
       );
 }
 
@@ -24,10 +26,12 @@ extension DecodeExtension on OffsetIterator<List<int>> {
     Encoding encoding = utf8,
     String name = 'decode',
     bool bubbleCancellation = true,
+    bool? cancelOnError,
   }) =>
       map(
         encoding.decode,
         name: name,
         bubbleCancellation: bubbleCancellation,
+        cancelOnError: cancelOnError,
       );
 }

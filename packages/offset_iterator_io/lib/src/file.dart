@@ -10,6 +10,7 @@ OffsetIterator<Uint8List> fileIterator(
   File file, {
   int blockSize = 64 * 1024,
   String name = 'fileIterator',
+  bool cancelOnError = true,
 }) =>
     OffsetIterator(
       name: name,
@@ -26,6 +27,7 @@ OffsetIterator<Uint8List> fileIterator(
         );
       },
       cleanup: (file) => file.close(),
+      cancelOnError: cancelOnError,
     );
 
 extension WriteToFile on OffsetIterator<List<int>> {
@@ -34,6 +36,7 @@ extension WriteToFile on OffsetIterator<List<int>> {
     File file, {
     FileMode mode = FileMode.writeOnly,
     String name = 'writeToFile',
+    bool? cancelOnError,
     bool bubbleCancellation = true,
   }) {
     final parent = prefetch(bubbleCancellation: true);
@@ -58,6 +61,7 @@ extension WriteToFile on OffsetIterator<List<int>> {
         cleanup: (file) => file.close(),
         bubbleCancellation: bubbleCancellation,
       ),
+      cancelOnError: cancelOnError ?? parent.cancelOnError,
     );
   }
 }

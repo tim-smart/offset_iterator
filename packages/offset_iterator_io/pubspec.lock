@@ -28,7 +28,7 @@ packages:
       name: async
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.8.1"
+    version: "2.8.2"
   benchmarking:
     dependency: "direct dev"
     description:
@@ -203,7 +203,7 @@ packages:
       name: offset_iterator
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.0.51"
+    version: "0.0.53"
   package_config:
     dependency: transitive
     description:
