@@ -289,7 +289,8 @@ class OffsetIterator<T> {
     return Some(log.elementAt(index));
   }
 
-  /// Prevents any new items from being added to the buffer, and
+  /// Prevents any new items from being added to the buffer and performs any
+  /// optional cleanup.
   FutureOr<void> cancel() => _cancel(false);
 
   FutureOr<void> _cancel(bool force) {
@@ -340,6 +341,26 @@ class OffsetIterator<T> {
 
     final fallbackOption = optionOf(fallback);
     return () => value.alt(() => fallbackOption.flatMap((f) => f()));
+  }
+
+  /// Helper method to generate a [CleanupCallback]
+  CleanupCallback? generateCleanup({
+    CleanupCallback? cleanup,
+    bool bubbleCancellation = true,
+  }) {
+    if (!bubbleCancellation) return cleanup;
+
+    final parent = this;
+    if (cleanup == null) return (_) => parent.cancel();
+
+    return (acc) {
+      if (parent.drained) return cleanup(acc);
+
+      final futureOr = cleanup(acc);
+      return futureOr is Future
+          ? futureOr.whenComplete(parent.cancel)
+          : parent.cancel();
+    };
   }
 
   /// Trim the [log] to the target `offset`.

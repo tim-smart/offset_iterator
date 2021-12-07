@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:offset_iterator/src/offset_iterator.dart';
@@ -80,4 +81,7 @@ class ConsumerGroup<T> {
       _sweepFuture = null;
     });
   }
+
+  /// Calls `cancel` on the wrapper [iterator].
+  FutureOr<void> cancel() => iterator.cancel();
 }

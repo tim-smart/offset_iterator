@@ -63,6 +63,24 @@ void main() {
       expect(
           await i.startFrom(0).toList(), equals([1, 101, 1001, 2, 102, 1002]));
     });
+
+    test('bubbleCancellation cancels the parent', () async {
+      final parent = OffsetIterator.range(1, end: 5);
+      final i = parent.map((i) => i * 2).transform((i) => [i]);
+      expect(await i.pull(), some(2));
+      await i.cancel();
+      expect(parent.drained, true);
+    });
+
+    test('bubbleCancellation false does not cancel the parent', () async {
+      final parent = OffsetIterator.range(1, end: 5);
+      final i = parent
+          .map((i) => i * 2)
+          .transform((i) => [i], bubbleCancellation: false);
+      expect(await i.pull(), some(2));
+      await i.cancel();
+      expect(parent.drained, false);
+    });
   });
 
   group('map', () {

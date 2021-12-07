@@ -10,6 +10,7 @@ extension StartFromExtension<T> on OffsetIterator<T> {
   OffsetIterator<T> startFrom(
     int? offset, {
     String name = 'startFrom',
+    bool bubbleCancellation = true,
   }) {
     final parent = this;
 
@@ -37,6 +38,7 @@ extension StartFromExtension<T> on OffsetIterator<T> {
                   hasMore: parent.hasMore(offset + 1),
                 ));
       },
+      cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
       seed: parent.generateSeed(startOffset: offset),
     );
   }
@@ -76,6 +78,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
     SeedCallback<R>? seed,
     int retention = 0,
     int concurrency = 1,
+    bool bubbleCancellation = true,
   }) {
     if (concurrency > 1) {
       return transformConcurrent(
@@ -98,6 +101,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
                 .then((item) => handleItem(item, item.map(pred).toNullable()))
             : handleItem(itemFuture, itemFuture.map(pred).toNullable());
       },
+      cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
       seed: seed,
       retention: retention,
     );
@@ -109,6 +113,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
     SeedCallback<T>? seed,
     int retention = 0,
     int concurrency = 1,
+    bool bubbleCancellation = true,
   }) =>
       transform(
         pred,
@@ -116,6 +121,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
         seed: generateSeed(override: seed),
         retention: retention,
         concurrency: concurrency,
+        bubbleCancellation: bubbleCancellation,
       );
 }
 
@@ -124,6 +130,7 @@ extension MapExtension<T> on OffsetIterator<T> {
     R Function(T) pred, {
     String name = 'map',
     int retention = 0,
+    bool bubbleCancellation = true,
   }) {
     final seed = generateSeed();
 
@@ -132,6 +139,7 @@ extension MapExtension<T> on OffsetIterator<T> {
       seed: () => (seed?.call() ?? const None()).map(pred),
       name: name,
       retention: retention,
+      bubbleCancellation: bubbleCancellation,
     );
   }
 }
@@ -143,6 +151,7 @@ extension AsyncMapExtension<T> on OffsetIterator<T> {
     SeedCallback<R>? seed,
     int retention = 0,
     int concurrency = 1,
+    bool bubbleCancellation = true,
   }) =>
       transform(
         (item) => pred(item).then((v) => [v]),
@@ -150,6 +159,7 @@ extension AsyncMapExtension<T> on OffsetIterator<T> {
         seed: seed,
         retention: retention,
         concurrency: concurrency,
+        bubbleCancellation: bubbleCancellation,
       );
 }
 
@@ -160,6 +170,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
     String name = 'scan',
     SeedCallback<R>? seed,
     int retention = 0,
+    bool bubbleCancellation = true,
   }) {
     R acc = initialValue;
 
@@ -171,6 +182,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
       name: name,
       seed: seed,
       retention: retention,
+      bubbleCancellation: bubbleCancellation,
     );
   }
 }
@@ -182,6 +194,7 @@ extension BufferExtension<T> on OffsetIterator<T> {
     String name = 'bufferCount',
     SeedCallback<T>? seed,
     int retention = 0,
+    bool bubbleCancellation = true,
   }) {
     final parent = this;
 
@@ -208,6 +221,7 @@ extension BufferExtension<T> on OffsetIterator<T> {
           hasMore: parent.hasMore(),
         );
       },
+      cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
     );
   }
 }
@@ -218,6 +232,7 @@ extension TapExtension<T> on OffsetIterator<T> {
     String name = 'tap',
     SeedCallback<T>? seed,
     int retention = 0,
+    bool bubbleCancellation = true,
   }) =>
       transformIdentical(
         (item) {
@@ -227,6 +242,7 @@ extension TapExtension<T> on OffsetIterator<T> {
         name: name,
         seed: seed,
         retention: retention,
+        bubbleCancellation: bubbleCancellation,
       );
 }
 
@@ -236,6 +252,7 @@ extension DistinctExtension<T> on OffsetIterator<T> {
     String name = 'distinct',
     SeedCallback<T>? seed,
     int retention = 0,
+    bool bubbleCancellation = true,
   }) {
     bool Function(T, T) eq = equals ?? (prev, next) => prev == next;
     Option<T> prev = const None();
@@ -258,6 +275,7 @@ extension DistinctExtension<T> on OffsetIterator<T> {
       },
       name: name,
       retention: retention,
+      bubbleCancellation: bubbleCancellation,
     );
   }
 }
@@ -268,6 +286,7 @@ extension TakeWhileExtension<T> on OffsetIterator<T> {
     String name = 'takeWhile',
     SeedCallback<T>? seed,
     int retention = 0,
+    bool bubbleCancellation = true,
   }) {
     Option<T> prev = const None();
     seed = generateSeed(override: seed);
@@ -284,6 +303,7 @@ extension TakeWhileExtension<T> on OffsetIterator<T> {
       },
       name: name,
       retention: retention,
+      bubbleCancellation: bubbleCancellation,
     );
   }
 }
@@ -294,12 +314,14 @@ extension TakeUntilExtension<T> on OffsetIterator<T> {
     String name = 'takeUntil',
     SeedCallback<T>? seed,
     int retention = 0,
+    bool bubbleCancellation = true,
   }) =>
       takeWhile(
         (item, prev) => !predicate(item, prev),
         name: name,
         seed: seed,
         retention: retention,
+        bubbleCancellation: bubbleCancellation,
       );
 }
 
@@ -309,6 +331,7 @@ extension AccumulateExtension<T> on OffsetIterator<List<T>> {
     String name = 'accumulate',
     SeedCallback<List<T>>? seed,
     int retention = 0,
+    bool bubbleCancellation = true,
   }) =>
       scan(
         [],
@@ -316,6 +339,7 @@ extension AccumulateExtension<T> on OffsetIterator<List<T>> {
         name: name,
         seed: seed,
         retention: retention,
+        bubbleCancellation: bubbleCancellation,
       );
 }
 
@@ -324,6 +348,7 @@ extension AccumulateIListExtension<T> on OffsetIterator<IList<T>> {
     String name = 'accumulateIList',
     SeedCallback<IList<T>>? seed,
     int retention = 0,
+    bool bubbleCancellation = true,
   }) =>
       scan(
         IList(),
@@ -331,6 +356,7 @@ extension AccumulateIListExtension<T> on OffsetIterator<IList<T>> {
         name: name,
         seed: seed,
         retention: retention,
+        bubbleCancellation: bubbleCancellation,
       );
 }
 
@@ -340,6 +366,7 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
     String name = 'handleError',
     int? retention,
     int maxRetries = 5,
+    bool bubbleCancellation = true,
   }) {
     final parent = this;
 
@@ -366,6 +393,7 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
           hasMore: remainingRetries == 0 ? false : !parent.drained,
         );
       },
+      cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
     );
   }
 }
@@ -377,6 +405,7 @@ extension PrefetchExtension<T> on OffsetIterator<T> {
   /// before the child needs it.
   OffsetIterator<T> prefetch({
     String name = 'prefetch',
+    bool bubbleCancellation = true,
   }) {
     final parent = this;
 
@@ -398,46 +427,9 @@ extension PrefetchExtension<T> on OffsetIterator<T> {
           hasMore: hasMore,
         );
       },
+      cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
     );
   }
-}
-
-extension FoldExtension<T> on OffsetIterator<T> {
-  Future<R> fold<R>(R initialValue, R Function(R acc, T item) reducer) async {
-    var acc = initialValue;
-
-    while (!drained) {
-      final resultFuture = pull();
-      final result = resultFuture is Future ? await resultFuture : resultFuture;
-      acc = result.map((v) => reducer(acc, v)).getOrElse(() => acc);
-    }
-
-    return acc;
-  }
-}
-
-extension ToIListExtension<T> on OffsetIterator<T> {
-  Future<IList<T>> toIList() => fold(
-        IList(),
-        (acc, item) => acc.add(item),
-      );
-}
-
-extension ToListExtension<T> on OffsetIterator<T> {
-  Future<List<T>> toList() => fold([], (acc, item) {
-        acc.add(item);
-        return acc;
-      });
-}
-
-extension IntExtension on OffsetIterator<int> {
-  /// Calculates the sum of all the emitted numbers.
-  Future<int> sum() => fold(0, (acc, item) => acc + item);
-}
-
-extension DoubleExtension on OffsetIterator<double> {
-  /// Calculates the sum of all the emitted numbers.
-  Future<double> sum() => fold(0, (acc, item) => acc + item);
 }
 
 extension FlatMapExtension<T> on OffsetIterator<T> {
@@ -446,6 +438,7 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
     String name = 'flatMap',
     int retention = 0,
     SeedCallback<R>? seed,
+    bool bubbleCancellation = true,
   }) {
     final parent = this;
 
@@ -477,6 +470,7 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
           hasMore: parent.hasMore(),
         );
       },
+      cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
       seed: seed,
       retention: retention,
     );
@@ -490,6 +484,7 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
     required int concurrency,
     SeedCallback<R>? seed,
     int retention = 0,
+    bool bubbleCancellation = true,
   }) {
     final parent = this;
     final queue = Queue<FutureOr<List<R>?>>();
@@ -517,6 +512,7 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
           hasMore: chunk != null && queue.isNotEmpty,
         );
       },
+      cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
       seed: seed,
       retention: retention,
     );
@@ -578,4 +574,42 @@ extension ListenExtension<T> on OffsetIterator<T> {
 
     return () => cancelled = true;
   }
+}
+
+extension FoldExtension<T> on OffsetIterator<T> {
+  Future<R> fold<R>(R initialValue, R Function(R acc, T item) reducer) async {
+    var acc = initialValue;
+
+    while (!drained) {
+      final resultFuture = pull();
+      final result = resultFuture is Future ? await resultFuture : resultFuture;
+      acc = result.map((v) => reducer(acc, v)).getOrElse(() => acc);
+    }
+
+    return acc;
+  }
+}
+
+extension ToIListExtension<T> on OffsetIterator<T> {
+  Future<IList<T>> toIList() => fold(
+        IList(),
+        (acc, item) => acc.add(item),
+      );
+}
+
+extension ToListExtension<T> on OffsetIterator<T> {
+  Future<List<T>> toList() => fold([], (acc, item) {
+        acc.add(item);
+        return acc;
+      });
+}
+
+extension IntExtension on OffsetIterator<int> {
+  /// Calculates the sum of all the emitted numbers.
+  Future<int> sum() => fold(0, (acc, item) => acc + item);
+}
+
+extension DoubleExtension on OffsetIterator<double> {
+  /// Calculates the sum of all the emitted numbers.
+  Future<double> sum() => fold(0, (acc, item) => acc + item);
 }
