@@ -1,6 +1,6 @@
 name: offset_iterator_io
 description: Extension methods for offset_iterator, for working with dart:io and friends.
-version: 0.0.8
+version: 0.0.9
 homepage: https://github.com/tim-smart/offset_iterator
 
 environment:
