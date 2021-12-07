@@ -1,6 +1,6 @@
 name: offset_iterator
 description: Pull based async iterator with offset tracking. An alternative to Stream.
-version: 0.0.53
+version: 0.0.54
 homepage: https://github.com/tim-smart/offset_iterator
 
 environment:
