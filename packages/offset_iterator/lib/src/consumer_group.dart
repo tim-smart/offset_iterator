@@ -51,6 +51,7 @@ class ConsumerGroup<T> {
       },
       seed: iterator.generateSeed(startOffset: startOffset),
       retention: retention,
+      cancelOnError: iterator.cancelOnError,
     );
 
     _register(i, startOffset);
