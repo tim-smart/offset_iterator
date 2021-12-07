@@ -689,7 +689,7 @@ extension ToIListExtension<T> on OffsetIterator<T> {
 }
 
 extension ToListExtension<T> on OffsetIterator<T> {
-  Future<List<T>> toList() => fold(const [], (acc, item) {
+  Future<List<T>> toList() => fold([], (acc, item) {
         acc.add(item);
         return acc;
       });
