@@ -131,8 +131,12 @@ class OffsetIterator<T> {
   bool get drained => buffer.isEmpty && !state.hasMore;
 
   void _maybeSeedValue() {
-    if (_status != OffsetIteratorStatus.unseeded) return;
-    if (_seed != null) _value = _seed!();
+    if (_status != OffsetIteratorStatus.unseeded) {
+      return;
+    } else if (_seed != null) {
+      _value = _seed!();
+    }
+
     _status = OffsetIteratorStatus.seeded;
   }
 
@@ -167,12 +171,13 @@ class OffsetIterator<T> {
   }
 
   FutureOr<Option<T>> _handleOffsetRequest(int offset) {
-    if (offset < _offset) return valueAt(offset + 1);
-
-    if (buffer.isNotEmpty) return _nextItem(Some(buffer.removeFirst()));
-    if (state.hasMore == false) return const None();
-
-    if (_processing) {
+    if (offset < _offset) {
+      return valueAt(offset + 1);
+    } else if (buffer.isNotEmpty) {
+      return _nextItem(Some(buffer.removeFirst()));
+    } else if (state.hasMore == false) {
+      return const None();
+    } else if (_processing) {
       return _processingFuture.then((_) => _handleOffsetRequest(offset));
     }
 
@@ -302,9 +307,9 @@ class OffsetIterator<T> {
     final status = _status;
     _status = OffsetIteratorStatus.completed;
 
-    if (status != OffsetIteratorStatus.active) return _complete();
-
-    if (!force && _processing) {
+    if (status != OffsetIteratorStatus.active) {
+      return _complete();
+    } else if (!force && _processing) {
       // ignore: void_checks
       return _processingFuture.whenComplete(_cleanupAndComplete);
     }

@@ -24,20 +24,19 @@ extension StartFromExtension<T> on OffsetIterator<T> {
 
         final futureOr = parent.pull(offset);
 
-        if (futureOr is! Future) {
-          return OffsetIteratorState(
-            acc: offset + 1,
-            chunk: futureOr is Some ? [(futureOr as Some).value] : null,
-            hasMore: parent.hasMore(offset + 1),
-          );
+        if (futureOr is Future<Option<T>>) {
+          return futureOr.then((item) => OffsetIteratorState(
+                acc: offset + 1,
+                chunk: item is Some ? [(item as Some).value] : null,
+                hasMore: parent.hasMore(offset + 1),
+              ));
         }
 
-        return (futureOr as Future<Option<T>>)
-            .then((item) => OffsetIteratorState(
-                  acc: offset + 1,
-                  chunk: item is Some ? [(item as Some).value] : null,
-                  hasMore: parent.hasMore(offset + 1),
-                ));
+        return OffsetIteratorState(
+          acc: offset + 1,
+          chunk: futureOr is Some ? [(futureOr as Some).value] : null,
+          hasMore: parent.hasMore(offset + 1),
+        );
       },
       cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
       cancelOnError: cancelOnError ?? parent.cancelOnError,
@@ -49,29 +48,6 @@ extension StartFromExtension<T> on OffsetIterator<T> {
   /// book-keep the last processed offset to ensure items aren't missed.
   OffsetIterator<T> withTracking() => startFrom(null);
 }
-
-FutureOr<OffsetIteratorState<R>> Function<R>(
-  Option<T> item,
-  FutureOr<List<R>?> chunkFuture,
-) _handleItem<T>(OffsetIterator<T> parent) {
-  final handleNextChunk = _handleNextChunk(parent);
-
-  return <R>(item, chunkFuture) => chunkFuture is Future
-      ? (chunkFuture as Future).then((chunk) => handleNextChunk(item, chunk))
-      : handleNextChunk(item, chunkFuture);
-}
-
-FutureOr<OffsetIteratorState<R>> Function<R>(
-  Option<T> item,
-  List<R>? chunk,
-) _handleNextChunk<T>(OffsetIterator<T> parent) => <R>(item, chunk) {
-      final hasMore = item.isNone() || chunk != null;
-
-      return OffsetIteratorState(
-        chunk: item.isSome() ? (chunk ?? const []) : null,
-        hasMore: hasMore && parent.hasMore(),
-      );
-    };
 
 extension TransformExtension<T> on OffsetIterator<T> {
   OffsetIterator<R> transform<R>(
@@ -93,16 +69,39 @@ extension TransformExtension<T> on OffsetIterator<T> {
     }
 
     final parent = this;
-    final handleItem = _handleItem(parent);
+
+    FutureOr<OffsetIteratorState<R>> handleNextChunk(
+      Option<T> item,
+      List<R>? chunk,
+    ) {
+      final hasValue = item.isSome();
+      final hasMore = !hasValue || chunk != null;
+
+      return OffsetIteratorState(
+        chunk: hasValue ? (chunk ?? const []) : null,
+        hasMore: hasMore && parent.hasMore(),
+      );
+    }
+
+    FutureOr<OffsetIteratorState<R>> handleItem(Option<T> item) {
+      final chunkFuture = item is Some ? pred((item as Some).value) : null;
+
+      if (chunkFuture is Future) {
+        return (chunkFuture as Future<List<R>?>)
+            .then((chunk) => handleNextChunk(item, chunk));
+      }
+
+      return handleNextChunk(item, chunkFuture);
+    }
 
     return OffsetIterator(
       name: toStringWithChild(name),
       process: (_) {
         final itemFuture = parent.pull();
-        return itemFuture is Future
-            ? (itemFuture as Future)
-                .then((item) => handleItem(item, item.map(pred).toNullable()))
-            : handleItem(itemFuture, itemFuture.map(pred).toNullable());
+        if (itemFuture is Future) {
+          return (itemFuture as Future<Option<T>>).then(handleItem);
+        }
+        return handleItem(itemFuture);
       },
       cleanup: parent.generateCleanup(bubbleCancellation: bubbleCancellation),
       cancelOnError: cancelOnError ?? parent.cancelOnError,
@@ -186,10 +185,7 @@ extension ScanExtension<T> on OffsetIterator<T> {
     R acc = initialValue;
 
     return transform(
-      (item) {
-        acc = reducer(acc, item);
-        return [acc];
-      },
+      (item) => [acc = reducer(acc, item)],
       name: name,
       seed: seed,
       retention: retention,
@@ -472,6 +468,7 @@ extension EitherExtension<T> on OffsetIterator<T> {
                 .then(handleItem)
                 .catchError(handleError);
           }
+
           return handleItem(futureOr);
         } catch (err, stack) {
           return handleError(err, stack);
@@ -642,8 +639,8 @@ extension ListenExtension<T> on OffsetIterator<T> {
         try {
           final futureOr = pull();
 
-          if (futureOr is Future) {
-            return (futureOr as Future<Option<T>>).then((item) {
+          if (futureOr is Future<Option<T>>) {
+            return futureOr.then((item) {
               handleData(item);
               return doPull();
             }, onError: (err, stack) {
