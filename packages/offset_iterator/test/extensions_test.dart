@@ -100,7 +100,7 @@ void main() {
         retention: -1,
       );
       await i.run();
-      expect(i.log.toList(), [1, 2]);
+      expect(i.log.toList(), [some(1), some(2)]);
 
       final mapped = i.startFrom(0).map((i) => i * 2);
 
@@ -115,7 +115,7 @@ void main() {
         retention: -1,
       );
       await i.run();
-      expect(i.log.toList(), [1, 2]);
+      expect(i.log.toList(), [none(), some(1), some(2)]);
 
       final mapped = i.startFrom(0).map((i) => i * 2);
 

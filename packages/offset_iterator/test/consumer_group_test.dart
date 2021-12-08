@@ -32,7 +32,7 @@ void main() {
       expect(await child1.toList(), [2, 3, 4, 5]);
       await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 3);
-      expect(parent.log.toList(), [2, 3, 4]);
+      expect(parent.log.toList(), [some(2), some(3), some(4)]);
 
       expect(await child2.pull(), equals(some(2)));
       await Future.microtask(() {});

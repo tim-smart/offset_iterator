@@ -98,7 +98,8 @@ class OffsetIterator<T> {
   }
 
   /// The earliest offset that still has a value
-  int get earliestAvailableOffset => offset - log.length;
+  int get earliestAvailableOffset =>
+      retention != 0 ? offset - log.length : offset;
 
   var _offset = 0;
 
@@ -109,7 +110,7 @@ class OffsetIterator<T> {
 
   /// The log contains previously pulled items. Retention is controlled by the
   /// `rentention` property.
-  final log = Queue<T>();
+  final log = Queue<Option<T>>();
 
   /// Check if there is more items after the specified offset.
   /// If no offset it specified, it uses the head offset.
@@ -168,7 +169,7 @@ class OffsetIterator<T> {
   FutureOr<Option<T>> _handleOffsetRequest(int offset) {
     if (offset < _offset) return valueAt(offset + 1);
 
-    if (buffer.isNotEmpty) return _nextItem(buffer.removeFirst());
+    if (buffer.isNotEmpty) return _nextItem(Some(buffer.removeFirst()));
     if (state.hasMore == false) return const None();
 
     if (_processing) {
@@ -241,7 +242,9 @@ class OffsetIterator<T> {
     if (state.error != null) throw state.error;
 
     final chunk = state.chunk;
-    if (chunk == null) return const None();
+    if (chunk == null) {
+      return state.hasMore ? _nextItem(const None()) : const None();
+    }
 
     final chunkLength = chunk.length;
     if (chunkLength == 0) {
@@ -251,25 +254,24 @@ class OffsetIterator<T> {
 
       return _doProcessing(offset);
     } else if (chunkLength == 1) {
-      return _nextItem(chunk.first);
+      return _nextItem(Some(chunk.first));
     }
 
     buffer.addAll(chunk);
 
-    return _nextItem(buffer.removeFirst());
+    return _nextItem(Some(buffer.removeFirst()));
   }
 
-  Option<T> _nextItem(T item) {
-    if (retention != 0 && _value.isSome()) {
-      log.add((_value as Some).value);
+  Option<T> _nextItem(Option<T> item) {
+    if (retention != 0) {
+      log.add(_value);
 
       while (retention > -1 && log.length > retention) {
         log.removeFirst();
       }
     }
 
-    final value = Some(item);
-    _value = value;
+    _value = item;
     _offset++;
 
     return value;
@@ -288,7 +290,7 @@ class OffsetIterator<T> {
     if (reverseIndex > logLength) return const None();
 
     final index = logLength - reverseIndex;
-    return Some(log.elementAt(index));
+    return log.elementAt(index);
   }
 
   /// Prevents any new items from being added to the buffer and performs any
@@ -367,7 +369,7 @@ class OffsetIterator<T> {
 
   /// Trim the [log] to the target `offset`.
   set earliestAvailableOffset(int offset) {
-    if (offset > this.offset || offset < 2) return;
+    if (offset > this.offset || offset < 1) return;
 
     final targetLogLength = _offset - offset;
     var toRemove = log.length - targetLogLength;

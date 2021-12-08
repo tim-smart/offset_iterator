@@ -207,7 +207,7 @@ void main() {
       );
       expect(await i.toList(), equals([1, 2, 3, 4, 5]));
       expect(i.value, equals(some(5)));
-      expect(i.log.toList(), equals([2, 3, 4]));
+      expect(i.log.toList(), equals([some(2), some(3), some(4)]));
       expect(i.earliestAvailableOffset, equals(2));
 
       expect(await i.startFrom(0).toList(), equals([2, 3, 4, 5]));
@@ -326,7 +326,7 @@ void main() {
       final i = OffsetIterator.range(0, end: 5, retention: -1);
       await i.toList();
 
-      expect(i.earliestAvailableOffset, 1);
+      expect(i.earliestAvailableOffset, 0);
       i.earliestAvailableOffset = 3;
       expect(i.earliestAvailableOffset, 3);
     });
@@ -335,7 +335,7 @@ void main() {
       final i = OffsetIterator.range(0, end: 5, retention: -1);
       await i.toList();
 
-      expect(i.earliestAvailableOffset, 1);
+      expect(i.earliestAvailableOffset, 0);
 
       i.earliestAvailableOffset = 1;
       expect(i.earliestAvailableOffset, 1);
@@ -345,7 +345,7 @@ void main() {
 
       i.earliestAvailableOffset = 7;
       expect(i.earliestAvailableOffset, 1);
-      expect(i.log.toList(), [0, 1, 2, 3, 4]);
+      expect(i.log.toList(), [some(0), some(1), some(2), some(3), some(4)]);
 
       i.earliestAvailableOffset = 6;
       expect(i.earliestAvailableOffset, 6);
