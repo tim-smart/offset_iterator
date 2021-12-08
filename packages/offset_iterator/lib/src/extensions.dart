@@ -65,7 +65,7 @@ FutureOr<OffsetIteratorState<R>> Function<R>(
   Option<T> item,
   List<R>? chunk,
 ) _handleNextChunk<T>(OffsetIterator<T> parent) => <R>(item, chunk) {
-      final hasMore = chunk != null;
+      final hasMore = item.isSome() && chunk != null;
 
       return OffsetIteratorState(
         chunk: item.isSome() ? (chunk ?? const []) : null,
