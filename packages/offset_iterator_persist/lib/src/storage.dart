@@ -33,15 +33,16 @@ class NullStorage implements Storage {
 class HiveStorage implements Storage {
   HiveStorage._(this._box);
 
-  static Future<HiveStorage> build() {
+  static Future<HiveStorage> build({
+    String boxName = 'offset_iterator_persist',
+  }) {
     return _lock.synchronized(
         () => _instance.map((i) => Future.value(i)).getOrElse(() async {
               final hive = HiveImpl();
               final dir = await getTemporaryDirectory();
               if (!kIsWeb) hive.init(dir.path);
 
-              final box =
-                  await hive.openBox<dynamic>('offset_iterator_persist');
+              final box = await hive.openBox<dynamic>(boxName);
 
               final instance = HiveStorage._(box);
               _instance = some(instance);
@@ -77,17 +78,21 @@ class HiveStorage implements Storage {
 }
 
 class SharedPreferencesStorage implements Storage {
-  SharedPreferencesStorage._(this._prefs);
+  SharedPreferencesStorage._(
+    this._prefs, {
+    this.prefix = 'oip',
+  });
 
-  static Future<SharedPreferencesStorage> build() =>
+  static Future<SharedPreferencesStorage> build({String prefix = 'oip'}) =>
       _lock.synchronized(() => SharedPreferences.getInstance()
-          .then((p) => SharedPreferencesStorage._(p)));
+          .then((p) => SharedPreferencesStorage._(p, prefix: prefix)));
 
   static final _lock = Lock();
 
   final SharedPreferences _prefs;
 
-  String _prefixKey(String key) => 'oip_$key';
+  final String prefix;
+  String _prefixKey(String key) => '${prefix}_$key';
 
   @override
   Option<dynamic> read(String key) =>
