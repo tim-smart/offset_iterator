@@ -129,14 +129,14 @@ packages:
       name: offset_iterator
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.0.50"
+    version: "0.0.60"
   offset_iterator_riverpod:
     dependency: "direct main"
     description:
       path: ".."
       relative: true
     source: path
-    version: "0.0.14"
+    version: "0.0.14+2"
   path:
     dependency: transitive
     description:
