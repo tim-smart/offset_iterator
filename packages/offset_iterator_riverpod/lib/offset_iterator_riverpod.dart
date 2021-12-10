@@ -2,10 +2,8 @@ library offset_iterator_riverpod;
 
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:riverpod/riverpod.dart';
-import 'package:state_iterator/state_iterator.dart';
 
 export 'package:offset_iterator/offset_iterator.dart';
-export 'package:state_iterator/state_iterator.dart';
 
 OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
   ProviderRef<OffsetIterator<T>> ref,
@@ -109,25 +107,4 @@ OffsetIteratorValue<Option<T>> Function(
       ref.onDispose(cancel);
 
       return OffsetIteratorValue._(iterator.value, iterator.hasMore());
-    };
-
-/// Helper for creating a [StateIterator] provider.
-/// Calls `close` on dispose.
-StateIterator<T> Function(StateIterator<T> iterator) stateIteratorProvider<T>(
-  ProviderRef<StateIterator<T>> ref,
-) =>
-    (iterator) {
-      ref.onDispose(iterator.close);
-      return iterator;
-    };
-
-/// Listens to an [StateIterator], and updates the exposed state whenever it
-/// changes.
-T Function(StateIterator<T> stateIterator) stateIteratorValueProvider<T>(
-  ProviderRef<T> ref,
-) =>
-    (si) {
-      final cancel = si.iterator.listen((item) => ref.state = item);
-      ref.onDispose(cancel);
-      return si.iterator.valueOrNull!;
     };

@@ -288,13 +288,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.10.0"
-  state_iterator:
-    dependency: "direct main"
-    description:
-      name: state_iterator
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.0.4+1"
   state_notifier:
     dependency: transitive
     description:
