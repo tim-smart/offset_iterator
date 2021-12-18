@@ -1,7 +1,10 @@
+// ignore_for_file: library_prefixes
+
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:fpdart/fpdart.dart';
+import 'package:fpdt/function.dart';
+import 'package:fpdt/option.dart' as O;
 import 'package:offset_iterator/offset_iterator.dart';
 
 /// Perform a streaming read operation on the given [File].
@@ -49,7 +52,7 @@ extension WriteToFile on OffsetIterator<List<int>> {
 
         final futureOr = parent.pull();
         final chunk = futureOr is Future ? await futureOr : futureOr;
-        await chunk.match(file.writeFrom, () {});
+        await chunk.p(O.fold(() {}, file.writeFrom));
 
         return OffsetIteratorState(
           acc: file,
