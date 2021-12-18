@@ -1,5 +1,9 @@
+// ignore_for_file: library_prefixes
+
 library offset_iterator_riverpod;
 
+import 'package:fpdt/function.dart';
+import 'package:fpdt/option.dart' as O;
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:riverpod/riverpod.dart';
 
@@ -62,11 +66,11 @@ OffsetIteratorAsyncValue<T> Function(
         }
 
         return Future.value(iterator.pull()).then((value) {
-          value.map((v) => ref.state = OffsetIteratorAsyncValue._(
+          value.p(O.map((v) => ref.state = OffsetIteratorAsyncValue._(
                 AsyncValue.data(v),
                 iterator.hasMore(),
                 doPull,
-              ));
+              )));
 
           return doPull(remaining - 1);
         }).catchError((err, stack) {
@@ -81,10 +85,10 @@ OffsetIteratorAsyncValue<T> Function(
       doPull(initialDemand);
 
       return OffsetIteratorAsyncValue._(
-        iterator.value.match(
-          (v) => AsyncValue.data(v),
+        iterator.value.p(O.fold(
           () => const AsyncValue.loading(),
-        ),
+          (v) => AsyncValue.data(v),
+        )),
         iterator.hasMore(),
         doPull,
       );

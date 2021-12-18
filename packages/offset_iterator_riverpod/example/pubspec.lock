@@ -88,13 +88,13 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  fpdart:
+  fpdt:
     dependency: transitive
     description:
-      name: fpdart
+      name: fpdt
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.0.12"
+    version: "0.0.29+1"
   http_parser:
     dependency: transitive
     description:
@@ -129,14 +129,14 @@ packages:
       name: offset_iterator
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.0.60"
+    version: "0.0.61"
   offset_iterator_riverpod:
     dependency: "direct main"
     description:
       path: ".."
       relative: true
     source: path
-    version: "0.0.14+2"
+    version: "0.0.15"
   path:
     dependency: transitive
     description:
