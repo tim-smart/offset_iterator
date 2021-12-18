@@ -2,10 +2,13 @@ library offset_iterator_builder;
 
 import 'dart:async';
 import 'package:flutter/widgets.dart';
-import 'package:fpdart/fpdart.dart' hide State;
+import 'package:fpdt/either.dart' as E;
+import 'package:fpdt/function.dart';
+import 'package:fpdt/option.dart' as O;
+import 'package:fpdt/tuple.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 
-typedef OffsetIteratorValue<T> = Either<dynamic, Tuple2<Option<T>, bool>>;
+typedef OffsetIteratorValue<T> = E.Either<dynamic, Tuple2<Option<T>, bool>>;
 
 typedef OffsetWidgetBuilder<T> = Widget Function(
   BuildContext,
@@ -39,14 +42,17 @@ R Function<R>({
       required data,
       required loading,
     }) =>
-        value.match(
+        value.p(E.fold(
           error,
-          (s) => s.first.match((v) => data(v, s.second), loading),
-        );
+          (s) => s.first.p(O.fold(
+            loading,
+            (v) => data(v, s.second),
+          )),
+        ));
 
 class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   OffsetIterator<T> get iterator => widget.iterator;
-  OffsetIteratorValue<T> state = Either.right(tuple2(none(), true));
+  OffsetIteratorValue<T> state = E.right(tuple2(none(), true));
   bool _disposed = false;
 
   @override
@@ -65,7 +71,7 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   }
 
   void _subscribe() {
-    iterator.value.map((v) => _handleData(some(v)));
+    iterator.value.p(O.map((v) => _handleData(some(v))));
     _initialDemand(widget.initialDemand);
   }
 
@@ -88,10 +94,10 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
     if (_disposed) return;
 
     final hasMore = iterator.hasMore();
-    final newState = item.match<OffsetIteratorValue<T>>(
-      (item) => Either.right(tuple2(some(item), hasMore)),
-      () => state.map((s) => s.copyWith(value2: hasMore)),
-    );
+    final newState = item.p(O.fold(
+      () => state.p(E.map((s) => s.copyWith(second: hasMore))),
+      (item) => E.right(tuple2(some(item), hasMore)),
+    ));
 
     if (newState != state) {
       setState(() {
@@ -99,7 +105,7 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
       });
     }
 
-    if (hasMore && item.isNone()) {
+    if (hasMore && O.isNone(item)) {
       await _demand();
     }
   }
@@ -107,7 +113,7 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   void _handleError(dynamic err) {
     if (_disposed) return;
     setState(() {
-      state = Either.left(err);
+      state = E.left(err);
     });
   }
 
