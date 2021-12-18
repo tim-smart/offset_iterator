@@ -1,5 +1,8 @@
+// ignore_for_file: library_prefixes
+
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
-import 'package:fpdart/fpdart.dart';
+import 'package:fpdt/function.dart';
+import 'package:fpdt/option.dart' as O;
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:offset_iterator_persist/src/storage.dart';
 
@@ -11,9 +14,7 @@ Option<T> _readCache<T>(
 ) {
   if (cache != null && cache.containsKey(key)) return cache[key];
 
-  final data = storage
-      .read(key)
-      .flatMap((json) => Option.tryCatch(() => fromJson(json)));
+  final data = storage.read(key).p(O.chainTryCatchK(fromJson));
   cache?[key] = data;
   return data;
 }
@@ -60,16 +61,16 @@ extension PersistExtension<T> on OffsetIterator<T> {
   }) {
     final currentValue = _readCache(storage, cache, key, fromJson);
     final write = _writeCache(storage, cache, key, toJson);
-    final seed = currentValue.match<SeedCallback<T>?>(
-      (v) => () => some(v),
+    final seed = currentValue.p(O.fold(
       () => generateSeed(fallback: fallbackSeed),
-    );
+      (v) => () => some(v),
+    ));
     Option<T> prev = const None();
 
     return tap(
       (item) {
         Future.microtask(() {
-          if (prev.isSome() &&
+          if (O.isSome(prev) &&
               equals != null &&
               equals((prev as Some).value, item)) {
             return;
