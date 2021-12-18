@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:test/test.dart';
 

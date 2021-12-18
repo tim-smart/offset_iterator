@@ -1,6 +1,6 @@
 library offset_iterator;
 
-export 'package:fpdart/src/option.dart';
+export 'package:fpdt/option.dart' show Option, Some, None, kNone, some, none;
 
 export 'src/consumer_group.dart';
 export 'src/controller.dart';

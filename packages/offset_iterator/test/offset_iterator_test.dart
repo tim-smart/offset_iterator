@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:fpdart/fpdart.dart';
+import 'package:fpdt/either.dart' show left, right;
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:test/test.dart';

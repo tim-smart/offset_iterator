@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:fpdart/fpdart.dart';
+import 'package:fpdt/function.dart';
+import 'package:fpdt/option.dart' as O;
 import 'package:offset_iterator/offset_iterator.dart';
 
 /// [AwaitableSink] is an [EventSink] that allows you to wait for the data
@@ -190,7 +191,7 @@ class OffsetIteratorController<T> implements DrainableSink<T> {
     var hasMore = true;
     if (_nextItem is _Close) {
       final item = _assignNextItem() as _Close<T>;
-      item.data.map(chunk.add);
+      item.data.p(O.map(chunk.add));
       item.completer.complete();
       hasMore = false;
     }

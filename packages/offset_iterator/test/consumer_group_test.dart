@@ -1,6 +1,4 @@
-import 'package:fpdart/fpdart.dart';
 import 'package:offset_iterator/offset_iterator.dart';
-import 'package:offset_iterator/src/consumer_group.dart';
 import 'package:test/test.dart';
 
 void main() {

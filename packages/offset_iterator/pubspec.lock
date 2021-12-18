@@ -106,13 +106,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.0.4"
-  fpdart:
+  fpdt:
     dependency: "direct main"
     description:
-      name: fpdart
+      name: fpdt
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "0.0.12"
+    version: "0.0.29+1"
   frontend_server_client:
     dependency: transitive
     description:

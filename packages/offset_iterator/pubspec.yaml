@@ -8,7 +8,7 @@ environment:
 
 dependencies:
   fast_immutable_collections: ^7.0.3
-  fpdart: ^0.0.12
+  fpdt: ^0.0.29
 
 dev_dependencies:
   benchmarking: ^0.6.1

@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
-import 'package:fpdart/fpdart.dart';
+import 'package:fpdt/either.dart' as E;
+import 'package:fpdt/function.dart';
+import 'package:fpdt/option.dart' as O;
 import 'package:offset_iterator/offset_iterator.dart';
 
 extension StartFromExtension<T> on OffsetIterator<T> {
@@ -74,7 +76,7 @@ extension TransformExtension<T> on OffsetIterator<T> {
       Option<T> item,
       List<R>? chunk,
     ) {
-      final hasValue = item.isSome();
+      final hasValue = O.isSome(item);
       final hasMore = !hasValue || chunk != null;
 
       return OffsetIteratorState(
@@ -142,7 +144,7 @@ extension MapExtension<T> on OffsetIterator<T> {
 
     return transform(
       (item) => [pred(item)],
-      seed: () => (seed?.call() ?? const None()).map(pred),
+      seed: () => (seed?.call() ?? O.kNone).p(O.map(pred)),
       name: name,
       retention: retention,
       bubbleCancellation: bubbleCancellation,
@@ -213,15 +215,15 @@ extension BufferExtension<T> on OffsetIterator<T> {
         final buffer = <T>[];
         var remaining = count;
 
+        final onItem = O.tap<T>((item) {
+          buffer.add(item);
+          remaining--;
+        });
+
         while (remaining > 0) {
           final futureOr = parent.pull();
           final item = futureOr is Future ? await futureOr : futureOr;
-
-          item.map((item) {
-            buffer.add(item);
-            remaining--;
-          });
-
+          onItem(item);
           if (parent.drained) break;
         }
 
@@ -273,7 +275,7 @@ extension DistinctExtension<T> on OffsetIterator<T> {
 
     return transform(
       (item) {
-        if (prev.isNone()) {
+        if (O.isNone(prev)) {
           prev = Some(item);
           return [item];
         }
@@ -403,7 +405,10 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
         try {
           final item = await parent.pull();
           remainingRetries = maxRetries;
-          chunk = item.map((v) => [v]).toNullable();
+          chunk = item.p(O.fold(
+            () => null,
+            (v) => [v],
+          ));
         } catch (err, stack) {
           final retryCount = maxRetries - (remainingRetries as int) + 1;
           final retry = (await onError(err, stack, retryCount)) ?? false;
@@ -428,30 +433,31 @@ extension HandleErrorExtension<T> on OffsetIterator<T> {
 extension EitherExtension<T> on OffsetIterator<T> {
   /// Items ([T]) are emitted as [Right], errors are handled and emitted as
   /// [Left].
-  OffsetIterator<Either<dynamic, T>> wrapWithEither({
+  OffsetIterator<E.Either<dynamic, T>> wrapWithEither({
     String name = 'wrapWithEither',
     int retention = 0,
     bool? cancelOnError,
     bool bubbleCancellation = true,
-    SeedCallback<Either<dynamic, T>>? seed,
+    SeedCallback<E.Either<dynamic, T>>? seed,
   }) {
     final parent = this;
 
     final parentSeed = parent.generateSeed();
-    final seed = parentSeed != null ? (() => parentSeed().map(right)) : null;
+    final seed =
+        parentSeed != null ? (() => parentSeed().p(O.map(E.right))) : null;
 
-    OffsetIteratorState<Either<dynamic, T>> handleItem(Option<T> item) =>
+    OffsetIteratorState<E.Either<dynamic, T>> handleItem(Option<T> item) =>
         OffsetIteratorState(
-          chunk: item is Some ? [Right((item as Some).value)] : null,
+          chunk: item.p(O.fold(() => null, (v) => [E.right(v)])),
           hasMore: parent.hasMore(),
         );
 
-    OffsetIteratorState<Either<dynamic, T>> handleError(
+    OffsetIteratorState<E.Either<dynamic, T>> handleError(
       dynamic err,
       StackTrace? stack,
     ) =>
         OffsetIteratorState(
-          chunk: [Left(err)],
+          chunk: [E.left(err)],
           hasMore: parent.hasMore(),
         );
 
@@ -535,7 +541,7 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
         if (child == null) {
           final itemFuture = parent.pull();
           final item = itemFuture is Future ? await itemFuture : itemFuture;
-          child = item.map(pred).toNullable();
+          child = item.p(O.fold(() => null, pred));
         }
 
         if (child != null) {
@@ -545,7 +551,7 @@ extension FlatMapExtension<T> on OffsetIterator<T> {
 
           return OffsetIteratorState(
             acc: childHasMore ? child : null,
-            chunk: item.map((v) => [v]).toNullable(),
+            chunk: item.p(O.fold(() => null, (v) => [v])),
             hasMore: childHasMore || parent.hasMore(),
           );
         }
@@ -580,7 +586,7 @@ extension TransformConcurrentExtension<T> on OffsetIterator<T> {
       while (queue.length < concurrency && parent.hasMore()) {
         final itemFuture = parent.pull();
         final item = itemFuture is Future ? await itemFuture : itemFuture;
-        item.map((item) => queue.add(predicate(item)));
+        item.p(O.tap((item) => queue.add(predicate(item))));
       }
     }
 
@@ -671,7 +677,7 @@ extension FoldExtension<T> on OffsetIterator<T> {
     while (!drained) {
       final resultFuture = pull();
       final result = resultFuture is Future ? await resultFuture : resultFuture;
-      acc = result.map((v) => reducer(acc, v)).getOrElse(() => acc);
+      acc = result.p(O.fold(() => acc, (v) => reducer(acc, v)));
     }
 
     return acc;

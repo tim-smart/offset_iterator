@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:fpdart/fpdart.dart';
+import 'package:fpdt/function.dart';
+import 'package:fpdt/either.dart' as E;
+import 'package:fpdt/option.dart' as O;
 import 'package:offset_iterator/offset_iterator.dart';
 
 class OffsetIteratorState<T> {
@@ -75,7 +77,7 @@ class OffsetIterator<T> {
     return _processingCompleter!.future;
   }
 
-  Option<T> _value = none<T>();
+  Option<T> _value = O.kNone;
 
   /// Get the current head value as an option.
   Option<T> get value {
@@ -84,7 +86,7 @@ class OffsetIterator<T> {
   }
 
   /// Get the current head value, or `null`.
-  T? get valueOrNull => value.toNullable();
+  T? get valueOrNull => O.toNullable(value);
 
   /// How many items to retain in the log.
   /// If set to a negative number (e.g. -1), it will retain everything.
@@ -342,14 +344,14 @@ class OffsetIterator<T> {
     _maybeSeedValue();
 
     if (startOffset != null) {
-      return valueAt(startOffset).map(some).match(
-            (v) => () => v,
-            () => fallback,
-          );
+      return valueAt(startOffset).p(O.fold(
+        () => fallback,
+        (v) => () => O.some(v),
+      ));
     }
 
-    final fallbackOption = optionOf(fallback);
-    return () => value.alt(() => fallbackOption.flatMap((f) => f()));
+    final fallbackOption = O.fromNullable(fallback);
+    return () => value.p(O.alt(() => fallbackOption.p(O.flatMap((f) => f()))));
   }
 
   /// Helper method to generate a [CleanupCallback]
@@ -393,33 +395,33 @@ class OffsetIterator<T> {
   /// If a `ValueStream` with a seed is given, it will populate the iterator's
   /// seed value.
   ///
-  /// Items are wrapped in [Either], so errors don't cancel the subscription.
-  static OffsetIterator<Either<dynamic, T>> fromStreamEither<T>(
+  /// Items are wrapped in [E.Either], so errors don't cancel the subscription.
+  static OffsetIterator<E.Either<dynamic, T>> fromStreamEither<T>(
     Stream<T> stream, {
     int retention = 0,
-    SeedCallback<Either<dynamic, T>>? seed,
+    SeedCallback<E.Either<dynamic, T>>? seed,
     String name = 'OffsetIterator.fromStreamEither',
   }) {
-    final valueStreamSeed =
-        Option.tryCatch(() => (stream as dynamic).valueOrNull as T?)
-            .flatMap(optionOf);
+    final valueStreamSeed = O
+        .tryCatch(() => (stream as dynamic).valueOrNull as T?)
+        .p(O.chainNullableK(identity));
 
-    stream = valueStreamSeed.match(
-      (_) => stream.skip(1),
+    stream = valueStreamSeed.p(O.fold(
       () => stream,
-    );
+      (_) => stream.skip(1),
+    ));
 
-    final eitherStream =
-        stream.transform(StreamTransformer<T, Either<dynamic, T>>.fromHandlers(
-      handleData: (data, sink) => sink.add(Right(data)),
-      handleError: (error, stack, sink) => sink.add(Left(error)),
+    final eitherStream = stream
+        .transform(StreamTransformer<T, E.Either<dynamic, T>>.fromHandlers(
+      handleData: (data, sink) => sink.add(E.right(data)),
+      handleError: (error, stack, sink) => sink.add(E.left(error)),
     ));
 
     return OffsetIterator(
       name: name,
       init: () => StreamIterator(eitherStream),
       process: (i) async {
-        final iter = i as StreamIterator<Either<dynamic, T>>;
+        final iter = i as StreamIterator<E.Either<dynamic, T>>;
         final available = await iter.moveNext();
 
         if (!available) {
@@ -433,7 +435,7 @@ class OffsetIterator<T> {
         );
       },
       cleanup: (i) => (i as StreamIterator).cancel(),
-      seed: seed ?? () => valueStreamSeed.map(right),
+      seed: seed ?? () => valueStreamSeed.p(O.map(E.right)),
       retention: retention,
     );
   }
@@ -448,16 +450,17 @@ class OffsetIterator<T> {
     String name = 'OffsetIterator.fromStream',
     bool cancelOnError = true,
   }) {
-    final eitherSeed = seed != null ? () => seed().map(right) : null;
+    final eitherSeed = seed != null ? () => seed().p(O.map(E.right)) : null;
 
     return fromStreamEither<T>(
       stream,
       seed: eitherSeed,
       name: name,
-    ).map((e) {
-      if (e is Left) throw (e as Left).value;
-      return (e as Right<dynamic, T>).value;
-    }, cancelOnError: cancelOnError, retention: retention);
+    ).map(
+      E.fold((l) => throw l, identity),
+      retention: retention,
+      cancelOnError: cancelOnError,
+    );
   }
 
   /// Create an `OffsetIterator` from the provided `Iterable`.
