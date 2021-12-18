@@ -100,7 +100,7 @@ packages:
     source: hosted
     version: "1.0.4"
   fpdt:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: fpdt
       url: "https://pub.dartlang.org"
