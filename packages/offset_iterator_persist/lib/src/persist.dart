@@ -29,7 +29,7 @@ void Function(T) _writeCache<T>(
       try {
         storage.write(key, toJson(value));
       } catch (_) {}
-      cache?[key] = some(value);
+      cache?[key] = O.some(value);
     };
 
 bool iListSublistEquality<T>(IList<T> prev, IList<T> next) {
@@ -63,21 +63,21 @@ extension PersistExtension<T> on OffsetIterator<T> {
     final write = _writeCache(storage, cache, key, toJson);
     final seed = currentValue.p(O.fold(
       () => generateSeed(fallback: fallbackSeed),
-      (v) => () => some(v),
+      (v) => () => O.some(v),
     ));
-    Option<T> prev = const None();
+    Option<T> prev = const O.None();
 
     return tap(
       (item) {
         Future.microtask(() {
           if (O.isSome(prev) &&
               equals != null &&
-              equals((prev as Some).value, item)) {
+              equals((prev as O.Some).value, item)) {
             return;
           }
 
           write(item);
-          prev = Some(item);
+          prev = O.Some(item);
         });
       },
       seed: () {

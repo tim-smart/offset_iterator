@@ -52,7 +52,7 @@ R Function<R>({
 
 class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   OffsetIterator<T> get iterator => widget.iterator;
-  OffsetIteratorValue<T> state = E.right(tuple2(none(), true));
+  OffsetIteratorValue<T> state = E.right(tuple2(O.none(), true));
   bool _disposed = false;
 
   @override
@@ -71,7 +71,7 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
   }
 
   void _subscribe() {
-    iterator.value.p(O.map((v) => _handleData(some(v))));
+    iterator.value.p(O.map((v) => _handleData(O.some(v))));
     _initialDemand(widget.initialDemand);
   }
 
@@ -96,7 +96,7 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
     final hasMore = iterator.hasMore();
     final newState = item.p(O.fold(
       () => state.p(E.map((s) => s.copyWith(second: hasMore))),
-      (item) => E.right(tuple2(some(item), hasMore)),
+      (item) => E.right(tuple2(O.some(item), hasMore)),
     ));
 
     if (newState != state) {

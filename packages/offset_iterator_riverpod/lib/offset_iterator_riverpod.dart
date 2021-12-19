@@ -103,7 +103,7 @@ OffsetIteratorValue<Option<T>> Function(
 ) =>
     (iterator) {
       final cancel = iterator.listen((item) {
-        ref.state = OffsetIteratorValue._(Some(item), iterator.hasMore());
+        ref.state = OffsetIteratorValue._(O.Some(item), iterator.hasMore());
       }, onDone: () {
         ref.state = OffsetIteratorValue._(ref.state.value, false);
       });

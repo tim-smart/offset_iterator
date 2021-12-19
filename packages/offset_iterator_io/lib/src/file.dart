@@ -56,7 +56,7 @@ extension WriteToFile on OffsetIterator<List<int>> {
 
         return OffsetIteratorState(
           acc: file,
-          chunk: chunk is Some ? [(chunk as Some).value.length] : const [0],
+          chunk: chunk is O.Some ? [(chunk as O.Some).value.length] : const [0],
           hasMore: parent.hasMore(),
         );
       },
