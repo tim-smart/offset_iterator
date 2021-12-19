@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:fpdt/either.dart' show left, right;
+import 'package:fpdt/option.dart' show some, none;
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:test/test.dart';
@@ -431,6 +432,20 @@ void main() {
     test('name property modifies toString output', () async {
       final i = OffsetIterator.range(1, end: 5, name: 'toStringTest');
       expect(i.toString(), 'toStringTest<int>');
+    });
+  });
+
+  group('OptionExtension', () {
+    test('when can unwrap Option values', () async {
+      final i = OffsetIterator.range(1);
+
+      expect(
+        (await i.pull()).when(
+          some: (i) => i * 2,
+          none: () => 0,
+        ),
+        2,
+      );
     });
   });
 }

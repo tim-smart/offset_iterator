@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 import 'package:fpdt/either.dart' show left, right;
+import 'package:fpdt/option.dart' show some, none;
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:test/test.dart';
 

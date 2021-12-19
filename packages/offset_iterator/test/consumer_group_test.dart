@@ -1,3 +1,4 @@
+import 'package:fpdt/option.dart' show some;
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:test/test.dart';
 

@@ -3,6 +3,7 @@ import 'dart:collection';
 
 import 'package:fpdt/function.dart';
 import 'package:fpdt/either.dart' as E;
+import 'package:fpdt/option.dart' show Some, None;
 import 'package:fpdt/option.dart' as O;
 import 'package:offset_iterator/offset_iterator.dart';
 
@@ -20,6 +21,22 @@ class OffsetIteratorState<T> {
   final bool hasMore;
   final dynamic error;
   final StackTrace? stackTrace;
+}
+
+extension OptionExtension<A> on O.Option<A> {
+  /// Helper function to unwrap values from `pull`.
+  B when<B>({
+    required B Function(A value) some,
+    required B Function() none,
+  }) =>
+      O.fold(none, some)(this);
+
+  /// Helper function to unwrap values from `pull`.
+  B fold<B>(
+    B Function() onNone,
+    B Function(A value) onSome,
+  ) =>
+      O.fold(onNone, onSome)(this);
 }
 
 typedef InitCallback = FutureOr<dynamic> Function();
@@ -515,11 +532,17 @@ class OffsetIterator<T> {
       OffsetIterator(
         name: name,
         init: () => start,
-        process: (current) => OffsetIteratorState(
-          acc: current + 1,
-          chunk: current > end ? [] : [current],
-          hasMore: end != null ? current < end : true,
-        ),
+        process: (current) => end != null
+            ? OffsetIteratorState(
+                acc: current + 1,
+                chunk: current > end ? [] : [current],
+                hasMore: current < end,
+              )
+            : OffsetIteratorState(
+                acc: current + 1,
+                chunk: [current],
+                hasMore: true,
+              ),
         seed: seed,
         retention: retention,
       );

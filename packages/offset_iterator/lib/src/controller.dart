@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:fpdt/function.dart';
+import 'package:fpdt/option.dart' show Some, None;
 import 'package:fpdt/option.dart' as O;
 import 'package:offset_iterator/offset_iterator.dart';
 
