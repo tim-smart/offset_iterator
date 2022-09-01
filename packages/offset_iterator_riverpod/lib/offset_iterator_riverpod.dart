@@ -18,7 +18,7 @@ OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
     };
 
 class OffsetIteratorValue<T> {
-  const OffsetIteratorValue._(this.value, this.hasMore);
+  const OffsetIteratorValue(this.value, this.hasMore);
 
   final T value;
   final bool hasMore;
@@ -36,11 +36,11 @@ class OffsetIteratorValue<T> {
 }
 
 class OffsetIteratorAsyncValue<T> extends OffsetIteratorValue<AsyncValue<T>> {
-  const OffsetIteratorAsyncValue._(
+  const OffsetIteratorAsyncValue(
     AsyncValue<T> value,
     bool hasMore,
     this._pull,
-  ) : super._(value, hasMore);
+  ) : super(value, hasMore);
 
   final Future<void> Function(int) _pull;
 
@@ -66,7 +66,7 @@ OffsetIteratorAsyncValue<T> Function(
         }
 
         return Future.value(iterator.pull()).then((value) {
-          value.p(O.map((v) => ref.state = OffsetIteratorAsyncValue._(
+          value.p(O.map((v) => ref.state = OffsetIteratorAsyncValue(
                 AsyncValue.data(v),
                 iterator.hasMore(),
                 doPull,
@@ -74,7 +74,7 @@ OffsetIteratorAsyncValue<T> Function(
 
           return doPull(remaining - 1);
         }).catchError((err, stack) {
-          ref.state = OffsetIteratorAsyncValue._(
+          ref.state = OffsetIteratorAsyncValue(
             AsyncValue.error(err, stackTrace: stack),
             iterator.hasMore(),
             doPull,
@@ -84,7 +84,7 @@ OffsetIteratorAsyncValue<T> Function(
 
       doPull(initialDemand);
 
-      return OffsetIteratorAsyncValue._(
+      return OffsetIteratorAsyncValue(
         iterator.value.p(O.fold(
           () => const AsyncValue.loading(),
           (v) => AsyncValue.data(v),
@@ -103,12 +103,12 @@ OffsetIteratorValue<Option<T>> Function(
 ) =>
     (iterator) {
       final cancel = iterator.listen((item) {
-        ref.state = OffsetIteratorValue._(O.Some(item), iterator.hasMore());
+        ref.state = OffsetIteratorValue(O.Some(item), iterator.hasMore());
       }, onDone: () {
-        ref.state = OffsetIteratorValue._(ref.state.value, false);
+        ref.state = OffsetIteratorValue(ref.state.value, false);
       });
 
       ref.onDispose(cancel);
 
-      return OffsetIteratorValue._(iterator.value, iterator.hasMore());
+      return OffsetIteratorValue(iterator.value, iterator.hasMore());
     };
