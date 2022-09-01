@@ -197,8 +197,8 @@ extension ScanExtension<T> on OffsetIterator<T> {
 }
 
 extension BufferExtension<T> on OffsetIterator<T> {
-  /// Converts the parent items into [List]'s of the given size.
-  OffsetIterator<List<T>> bufferCount(
+  /// Converts the parent items into [IList]'s of the given size.
+  OffsetIterator<IList<T>> bufferCount(
     int count, {
     String name = 'bufferCount',
     SeedCallback<T>? seed,
@@ -227,7 +227,7 @@ extension BufferExtension<T> on OffsetIterator<T> {
         }
 
         return OffsetIteratorState(
-          chunk: [buffer],
+          chunk: [buffer.toIList()],
           hasMore: parent.hasMore(),
         );
       },
