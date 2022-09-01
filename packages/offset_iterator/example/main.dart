@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:offset_iterator/offset_iterator.dart';
 
 /// A fake API representation

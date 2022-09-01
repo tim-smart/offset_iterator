@@ -17,6 +17,7 @@ Future<List<Post>> fetchPosts(int page, int limit) =>
 OffsetIterator<List<Post>> postsIterator() => OffsetIterator(
       init: () => 1,
       process: (page) async {
+        // ignore: avoid_print
         print('Fetching page $page...');
         final posts = await fetchPosts(page, 30);
         return OffsetIteratorState(

@@ -1,6 +1,5 @@
 import 'package:benchmarking/benchmarking.dart';
 import 'package:offset_iterator/offset_iterator.dart';
-import 'package:rxdart/rxdart.dart';
 
 void main() async {
   final numbers = Iterable<int>.generate(1000000);

@@ -286,6 +286,7 @@ void main() {
         seed: () => some(-1),
       ).handleError((err, stack, retry) {
         handled = true;
+        return null;
       }).map((i) => i * 2);
 
       expect(i.value, some(-2));

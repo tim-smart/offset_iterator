@@ -81,14 +81,14 @@ class HiveStorage implements Storage {
 }
 
 class SharedPreferencesStorage implements Storage {
-  SharedPreferencesStorage._(
+  SharedPreferencesStorage(
     this._prefs, {
     this.prefix = 'oip',
   });
 
   static Future<SharedPreferencesStorage> build({String prefix = 'oip'}) =>
       _lock.synchronized(() => SharedPreferences.getInstance()
-          .then((p) => SharedPreferencesStorage._(p, prefix: prefix)));
+          .then((p) => SharedPreferencesStorage(p, prefix: prefix)));
 
   static final _lock = Lock();
 
