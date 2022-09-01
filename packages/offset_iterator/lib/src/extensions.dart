@@ -699,6 +699,10 @@ extension ToListExtension<T> on OffsetIterator<T> {
       });
 }
 
+extension LastExtension<T> on OffsetIterator<T> {
+  Future<Option<T>> last() => fold(O.none<T>(), (acc, item) => O.some(item));
+}
+
 extension IntExtension on OffsetIterator<int> {
   /// Calculates the sum of all the emitted numbers.
   Future<int> sum() => fold(0, (acc, item) => acc + item);
