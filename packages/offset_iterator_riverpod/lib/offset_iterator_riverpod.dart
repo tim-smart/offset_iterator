@@ -51,6 +51,13 @@ class OffsetIteratorAsyncValue<T> extends OffsetIteratorValue<AsyncValue<T>> {
   final Future<void> Function(int) _pull;
 
   Future<void> pull() => _pull(1);
+
+  OffsetIteratorAsyncValue<B> map<B>(B Function(T a) f) =>
+      OffsetIteratorAsyncValue(
+        value.whenData(f),
+        hasMore,
+        _pull,
+      );
 }
 
 /// Pulls an [OffsetIterator] on demand, and exposes the most recently pulled
