@@ -42,6 +42,12 @@ class OffsetIteratorAsyncValue<T> extends OffsetIteratorValue<AsyncValue<T>> {
     this._pull,
   ) : super(value, hasMore);
 
+  factory OffsetIteratorAsyncValue.loading() => OffsetIteratorAsyncValue(
+        const AsyncValue.loading(),
+        false,
+        (_) => Future.value(),
+      );
+
   final Future<void> Function(int) _pull;
 
   Future<void> pull() => _pull(1);
