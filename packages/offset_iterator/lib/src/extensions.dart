@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:fast_immutable_collections/fast_immutable_collections.dart';
+import 'package:fpdt/fpdt.dart';
 import 'package:fpdt/either.dart' as E;
-import 'package:fpdt/function.dart';
-import 'package:fpdt/option.dart' show Some, None;
 import 'package:fpdt/option.dart' as O;
 import 'package:offset_iterator/offset_iterator.dart';
 
