@@ -18,10 +18,11 @@ OffsetIterator<T> Function(OffsetIterator<T> iterator) iteratorProvider<T>(
     };
 
 class OffsetIteratorValue<T> {
-  const OffsetIteratorValue(this.value, this.hasMore);
+  const OffsetIteratorValue(this.value, this.hasMore, this.pulling);
 
   final T value;
   final bool hasMore;
+  final bool pulling;
 
   @override
   bool operator ==(Object other) {
@@ -39,11 +40,13 @@ class OffsetIteratorAsyncValue<T> extends OffsetIteratorValue<AsyncValue<T>> {
   const OffsetIteratorAsyncValue(
     AsyncValue<T> value,
     bool hasMore,
+    bool pulling,
     this._pull,
-  ) : super(value, hasMore);
+  ) : super(value, hasMore, pulling);
 
   factory OffsetIteratorAsyncValue.loading() => OffsetIteratorAsyncValue(
         const AsyncValue.loading(),
+        false,
         false,
         (_) => Future.value(),
       );
@@ -56,8 +59,13 @@ class OffsetIteratorAsyncValue<T> extends OffsetIteratorValue<AsyncValue<T>> {
       OffsetIteratorAsyncValue(
         value.whenData(f),
         hasMore,
+        pulling,
         _pull,
       );
+
+  bool get isLoading => pulling || value is AsyncLoading;
+
+  Option<T> get data => value.maybeWhen(data: O.some, orElse: O.none);
 }
 
 /// Pulls an [OffsetIterator] on demand, and exposes the most recently pulled
@@ -78,10 +86,18 @@ OffsetIteratorAsyncValue<T> Function(
           return Future.sync(() {});
         }
 
+        ref.state = OffsetIteratorAsyncValue(
+          ref.state.value,
+          ref.state.hasMore,
+          true,
+          doPull,
+        );
+
         return Future.value(iterator.pull()).then((value) {
           value.p(O.map((v) => ref.state = OffsetIteratorAsyncValue(
                 AsyncValue.data(v),
                 iterator.hasMore(),
+                false,
                 doPull,
               )));
 
@@ -90,6 +106,7 @@ OffsetIteratorAsyncValue<T> Function(
           ref.state = OffsetIteratorAsyncValue(
             AsyncValue.error(err, stackTrace: stack),
             iterator.hasMore(),
+            false,
             doPull,
           );
         });
@@ -103,6 +120,7 @@ OffsetIteratorAsyncValue<T> Function(
           (v) => AsyncValue.data(v),
         )),
         iterator.hasMore(),
+        initialDemand > 0,
         doPull,
       );
     };
@@ -116,12 +134,13 @@ OffsetIteratorValue<Option<T>> Function(
 ) =>
     (iterator) {
       final cancel = iterator.listen((item) {
-        ref.state = OffsetIteratorValue(O.Some(item), iterator.hasMore());
+        ref.state =
+            OffsetIteratorValue(O.Some(item), iterator.hasMore(), false);
       }, onDone: () {
-        ref.state = OffsetIteratorValue(ref.state.value, false);
+        ref.state = OffsetIteratorValue(ref.state.value, false, false);
       });
 
       ref.onDispose(cancel);
 
-      return OffsetIteratorValue(iterator.value, iterator.hasMore());
+      return OffsetIteratorValue(iterator.value, iterator.hasMore(), true);
     };
