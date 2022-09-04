@@ -90,6 +90,29 @@ extension PersistExtension<T> on OffsetIterator<T> {
       bubbleCancellation: bubbleCancellation,
     );
   }
+
+  OffsetIterator<T> cache({
+    required Map<String, dynamic> cache,
+    bool Function(T prev, T next)? equals,
+    SeedCallback<T>? fallbackSeed,
+    int retention = 0,
+    String name = 'cache',
+    bool? cancelOnError,
+    bool bubbleCancellation = true,
+  }) =>
+      persist(
+        cache: cache,
+        storage: NullStorage(),
+        key: 'null',
+        fromJson: (val) => null as T,
+        toJson: (p0) => null,
+        fallbackSeed: fallbackSeed,
+        retention: retention,
+        name: name,
+        equals: equals,
+        cancelOnError: cancelOnError,
+        bubbleCancellation: bubbleCancellation,
+      );
 }
 
 extension PersistIListExtension<T> on OffsetIterator<IList<T>> {
@@ -112,6 +135,24 @@ extension PersistIListExtension<T> on OffsetIterator<IList<T>> {
         equals: iListSublistEquality,
         toJson: (l) => l.toJson(toJson),
         fromJson: (json) => IList.fromJson(json, fromJson),
+        fallbackSeed: fallbackSeed,
+        retention: retention,
+        name: name,
+        cancelOnError: cancelOnError,
+        bubbleCancellation: bubbleCancellation,
+      );
+
+  OffsetIterator<IList<T>> cacheIList({
+    required Map<String, dynamic> cache,
+    SeedCallback<IList<T>>? fallbackSeed,
+    int retention = 0,
+    String name = 'cacheIList',
+    bool? cancelOnError,
+    bool bubbleCancellation = true,
+  }) =>
+      this.cache(
+        cache: cache,
+        equals: iListSublistEquality,
         fallbackSeed: fallbackSeed,
         retention: retention,
         name: name,
