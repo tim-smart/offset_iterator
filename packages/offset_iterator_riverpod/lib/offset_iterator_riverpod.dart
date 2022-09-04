@@ -29,7 +29,8 @@ class OffsetIteratorValue<T> {
     return runtimeType == other.runtimeType &&
         other is OffsetIteratorValue<T> &&
         other.value == value &&
-        other.hasMore == hasMore;
+        other.hasMore == hasMore &&
+        other.pulling == pulling;
   }
 
   @override
@@ -77,7 +78,7 @@ OffsetIteratorAsyncValue<T> Function(
   int initialDemand = 1,
 }) =>
     (iterator) {
-      // Handle initialDemand
+      var canSetState = false;
       var disposed = false;
       ref.onDispose(() => disposed = true);
 
@@ -86,12 +87,14 @@ OffsetIteratorAsyncValue<T> Function(
           return Future.sync(() {});
         }
 
-        ref.state = OffsetIteratorAsyncValue(
-          ref.state.value,
-          ref.state.hasMore,
-          true,
-          doPull,
-        );
+        if (canSetState) {
+          ref.state = OffsetIteratorAsyncValue(
+            ref.state.value,
+            ref.state.hasMore,
+            true,
+            doPull,
+          );
+        }
 
         return Future.value(iterator.pull()).then((value) {
           value.p(O.map((v) => ref.state = OffsetIteratorAsyncValue(
@@ -113,6 +116,7 @@ OffsetIteratorAsyncValue<T> Function(
       }
 
       doPull(initialDemand);
+      canSetState = true;
 
       return OffsetIteratorAsyncValue(
         iterator.value.p(O.fold(
