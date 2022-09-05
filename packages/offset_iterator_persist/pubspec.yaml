@@ -1,6 +1,6 @@
 name: offset_iterator_persist
 description: Persistence extension for offset_iterator
-version: 0.0.17
+version: 0.0.18
 homepage: https://github.com/tim-smart/offset_iterator
 
 environment:
