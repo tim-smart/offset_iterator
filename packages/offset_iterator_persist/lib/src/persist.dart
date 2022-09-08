@@ -38,7 +38,7 @@ bool iListSublistEquality<T>(IList<T> prev, IList<T> next) {
 
   if (prevLength == nextLength) {
     return prev == next;
-  } else if (prevLength < nextLength) {
+  } else if (next.isEmpty || prevLength < nextLength) {
     return false;
   }
 
