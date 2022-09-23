@@ -1,2 +1,3 @@
-A sample command-line application with an entrypoint in `bin/`, library code
-in `lib/`, and example unit test in `test/`.
+# offset_iterator_nucleus
+
+Use your `OffsetIterator`'s with the `nucleus` package.

@@ -1,15 +1,15 @@
 name: offset_iterator_nucleus
-description: A sample command-line application.
-version: 1.0.0
-# homepage: https://www.example.com
+description: Helper functions for using offset_iterator with the nucleus package
+version: 0.0.1
+homepage: https://github.com/tim-smart/offset_iterator
 
 environment:
-  sdk: '>=2.17.6 <3.0.0'
-
-# dependencies:
-#   path: ^1.8.0
+  sdk: '>=2.17.0 <3.0.0'
 
 dev_dependencies:
   lints: ^2.0.0
   test: ^1.16.0
-dependencies: {nucleus: ^0.1.15, offset_iterator: ^0.0.64}
+
+dependencies:
+  nucleus: ^0.1.19
+  offset_iterator: ^0.0.64

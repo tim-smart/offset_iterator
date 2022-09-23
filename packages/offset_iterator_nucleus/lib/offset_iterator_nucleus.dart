@@ -1,3 +1,5 @@
+// ignore_for_file: depend_on_referenced_packages, library_prefixes
+
 library offset_iterator_nucleus;
 
 import 'package:fpdt/fpdt.dart';
@@ -8,7 +10,8 @@ import 'package:offset_iterator/offset_iterator.dart';
 export 'package:offset_iterator/offset_iterator.dart';
 
 Atom<OffsetIterator<T>> iteratorOnlyAtom<T>(
-        AtomReader<OffsetIterator<T>> create) =>
+  AtomReader<OffsetIterator<T>> create,
+) =>
     atom((get) {
       final iterator = create(get);
       get.onDispose(iterator.cancel);
@@ -32,7 +35,7 @@ class OffsetIteratorValue<T> {
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, value, hasMore);
+  int get hashCode => Object.hash(runtimeType, value, hasMore, pulling);
 }
 
 class OffsetIteratorFutureValue<T> extends OffsetIteratorValue<FutureValue<T>> {
@@ -146,14 +149,27 @@ AtomWithParent<OffsetIteratorValue<Option<T>>, Atom<OffsetIterator<T>>>
     iteratorLatestAtom<T>(AtomReader<OffsetIterator<T>> create) =>
         atomWithParent(iteratorOnlyAtom(create), (get, parent) {
           final iterator = get(parent);
+          var value = iterator.value;
 
           get.onDispose(iterator.listen((item) {
-            get.setSelf(
-                OffsetIteratorValue(O.Some(item), iterator.hasMore(), false));
+            value = O.some(item);
+            get.setSelf(OffsetIteratorValue(
+              value,
+              iterator.hasMore(),
+              false,
+            ));
           }, onDone: () {
-            get.setSelf(
-                OffsetIteratorValue(get.previousValue!.value, false, false));
+            get.setSelf(OffsetIteratorValue(
+              value,
+              false,
+              false,
+            ));
+            value = kNone;
           }));
 
-          return OffsetIteratorValue(iterator.value, iterator.hasMore(), true);
+          return OffsetIteratorValue(
+            value,
+            iterator.hasMore(),
+            true,
+          );
         });
