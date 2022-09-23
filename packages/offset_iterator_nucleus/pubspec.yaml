@@ -11,5 +11,6 @@ dev_dependencies:
   test: ^1.16.0
 
 dependencies:
+  fpdt: "any"
   nucleus: ^0.1.19
   offset_iterator: ^0.0.64
