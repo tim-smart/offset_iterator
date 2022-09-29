@@ -1,6 +1,6 @@
 name: offset_iterator_nucleus
 description: Helper functions for using offset_iterator with the nucleus package
-version: 0.0.1
+version: 0.0.2
 homepage: https://github.com/tim-smart/offset_iterator
 
 environment:

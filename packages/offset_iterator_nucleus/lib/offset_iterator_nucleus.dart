@@ -9,10 +9,10 @@ import 'package:offset_iterator/offset_iterator.dart';
 
 export 'package:offset_iterator/offset_iterator.dart';
 
-Atom<OffsetIterator<T>> iteratorOnlyAtom<T>(
+WritableAtom<OffsetIterator<T>, void> iteratorOnlyAtom<T>(
   AtomReader<OffsetIterator<T>> create,
 ) =>
-    atom((get) {
+    atomWithRefresh((get) {
       final iterator = create(get);
       get.onDispose(iterator.cancel);
       return iterator;
@@ -127,21 +127,23 @@ OffsetIteratorFutureValue<T> iteratorFutureValue<T>(
   );
 }
 
+typedef IteratorAtom<T> = AtomWithParent<OffsetIteratorFutureValue<T>,
+    WritableAtom<OffsetIterator<T>, void>>;
+
 /// Pulls an [OffsetIterator] on demand, and exposes the most recently pulled
 /// [OffsetIteratorFutureValue].
-AtomWithParent<OffsetIteratorFutureValue<T>, Atom<OffsetIterator<T>>>
-    iteratorAtom<T>(
+IteratorAtom<T> iteratorAtom<T>(
   AtomReader<OffsetIterator<T>> create, {
   int initialDemand = 1,
 }) =>
-        atomWithParent(
-          iteratorOnlyAtom(create),
-          (get, parent) => iteratorFutureValue(
-            get,
-            parent,
-            initialDemand: initialDemand,
-          ),
-        );
+    atomWithParent(
+      iteratorOnlyAtom(create),
+      (get, parent) => iteratorFutureValue(
+        get,
+        parent,
+        initialDemand: initialDemand,
+      ),
+    );
 
 /// Listens to an [OffsetIterator], and updates the exposed
 /// [OffsetIteratorValue] whenever it changes.
