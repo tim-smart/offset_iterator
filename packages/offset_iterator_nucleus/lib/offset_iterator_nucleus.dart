@@ -9,10 +9,10 @@ import 'package:offset_iterator/offset_iterator.dart';
 
 export 'package:offset_iterator/offset_iterator.dart';
 
-WritableAtom<OffsetIterator<T>, void> iteratorOnlyAtom<T>(
+Atom<OffsetIterator<T>> iteratorOnlyAtom<T>(
   AtomReader<OffsetIterator<T>> create,
 ) =>
-    atomWithRefresh((get) {
+    atom((get) {
       final iterator = create(get);
       get.onDispose(iterator.cancel);
       return iterator;
@@ -83,12 +83,14 @@ OffsetIteratorFutureValue<T> iteratorFutureValue<T>(
 
   Future<void> doPull(int remaining) =>
       Future.value(iterator.pull()).then((value) {
+        if (disposed) return null;
+
         final pullMore = shouldPullMore(remaining - 1);
 
         get.setSelf(OffsetIteratorFutureValue(
           value
               .p(O.map(FutureValue.data))
-              .p(O.alt(() => O.fromNullable(get.previousValue?.value)))
+              .p(O.alt(() => O.fromNullable(get.self()?.value)))
               .p(O.getOrElse(FutureValue.loading)),
           iterator.hasMore(),
           pullMore,
@@ -97,6 +99,8 @@ OffsetIteratorFutureValue<T> iteratorFutureValue<T>(
 
         return pullMore ? doPull(remaining - 1) : Future.value();
       }).catchError((err, stack) {
+        if (disposed) return null;
+
         get.setSelf(OffsetIteratorFutureValue(
           FutureValue.error(err, stack),
           iterator.hasMore(),
@@ -125,8 +129,8 @@ OffsetIteratorFutureValue<T> iteratorFutureValue<T>(
   );
 }
 
-typedef IteratorAtom<T> = AtomWithParent<OffsetIteratorFutureValue<T>,
-    WritableAtom<OffsetIterator<T>, void>>;
+typedef IteratorAtom<T>
+    = AtomWithParent<OffsetIteratorFutureValue<T>, Atom<OffsetIterator<T>>>;
 
 /// Pulls an [OffsetIterator] on demand, and exposes the most recently pulled
 /// [OffsetIteratorFutureValue].
