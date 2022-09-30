@@ -70,11 +70,9 @@ class OffsetIteratorFutureValue<T> extends OffsetIteratorValue<FutureValue<T>> {
 
 OffsetIteratorFutureValue<T> iteratorFutureValue<T>(
   AtomContext<OffsetIteratorFutureValue<T>> get,
-  Atom<OffsetIterator<T>> parent, {
+  OffsetIterator<T> iterator, {
   int initialDemand = 1,
 }) {
-  final iterator = get(parent);
-
   var disposed = false;
   get.onDispose(() => disposed = true);
 
@@ -140,7 +138,7 @@ IteratorAtom<T> iteratorAtom<T>(
       iteratorOnlyAtom(create),
       (get, parent) => iteratorFutureValue(
         get,
-        parent,
+        get(parent),
         initialDemand: initialDemand,
       ),
     );
