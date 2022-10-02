@@ -1,3 +1,7 @@
+## 0.0.6
+
+- Update nucleus
+
 ## 0.0.5
 
 - Don't set values when disposed

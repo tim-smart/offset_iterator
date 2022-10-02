@@ -9,7 +9,7 @@ import 'package:offset_iterator/offset_iterator.dart';
 
 export 'package:offset_iterator/offset_iterator.dart';
 
-Atom<OffsetIterator<T>> iteratorOnlyAtom<T>(
+ReadOnlyAtom<OffsetIterator<T>> iteratorOnlyAtom<T>(
   AtomReader<OffsetIterator<T>> create,
 ) =>
     atom((get) {
