@@ -42,26 +42,24 @@ class OffsetIteratorAsyncValue<T> extends OffsetIteratorValue<AsyncValue<T>> {
     AsyncValue<T> value,
     bool hasMore,
     bool pulling,
-    this._pull,
+    this.pull,
   ) : super(value, hasMore, pulling);
 
   factory OffsetIteratorAsyncValue.loading() => OffsetIteratorAsyncValue(
         const AsyncValue.loading(),
         false,
         false,
-        (_) => Future.value(),
+        () => Future.value(),
       );
 
-  final Future<void> Function(int) _pull;
-
-  Future<void> pull() => _pull(1);
+  final Future<void> Function() pull;
 
   OffsetIteratorAsyncValue<B> map<B>(B Function(T a) f) =>
       OffsetIteratorAsyncValue(
         value.whenData(f),
         hasMore,
         pulling,
-        _pull,
+        pull,
       );
 
   bool get isLoading => pulling || value is AsyncLoading;
@@ -78,45 +76,55 @@ OffsetIteratorAsyncValue<T> Function(
   int initialDemand = 1,
 }) =>
     (iterator) {
-      var canSetState = false;
+      var canSetValue = false;
       var disposed = false;
       ref.onDispose(() => disposed = true);
 
-      Future<void> doPull(int remaining) {
-        if (disposed || remaining == 0 || iterator.drained) {
-          return Future.sync(() {});
-        }
+      bool shouldPullMore(int remaining) =>
+          !disposed && remaining > 0 && !iterator.drained;
 
-        if (canSetState) {
-          ref.state = OffsetIteratorAsyncValue(
-            ref.state.value,
-            ref.state.hasMore,
-            true,
-            doPull,
-          );
-        }
+      late Future<void> Function() maybePull;
 
-        return Future.value(iterator.pull()).then((value) {
-          value.p(O.map((v) => ref.state = OffsetIteratorAsyncValue(
-                AsyncValue.data(v),
+      Future<void> doPull(int remaining) =>
+          Future.value(iterator.pull()).then((value) {
+            if (disposed) return null;
+
+            final pullMore = shouldPullMore(remaining - 1);
+
+            if (canSetValue) {
+              ref.state = OffsetIteratorAsyncValue(
+                value
+                    .p(O.map(AsyncValue.data))
+                    .p(O.alt(() => O.fromNullable(ref.state.value)))
+                    .p(O.getOrElse(AsyncValue.loading)),
                 iterator.hasMore(),
-                false,
-                doPull,
-              )));
+                pullMore,
+                maybePull,
+              );
+            }
 
-          return doPull(remaining - 1);
-        }).catchError((err, stack) {
-          ref.state = OffsetIteratorAsyncValue(
-            AsyncValue.error(err, stackTrace: stack),
-            iterator.hasMore(),
-            false,
-            doPull,
-          );
-        });
+            return pullMore ? doPull(remaining - 1) : Future.value();
+          }).catchError((err, stack) {
+            if (disposed) return null;
+
+            ref.state = OffsetIteratorAsyncValue(
+              AsyncValue.error(err, stackTrace: stack),
+              iterator.hasMore(),
+              false,
+              maybePull,
+            );
+          });
+
+      maybePull = () {
+        if (!shouldPullMore(1)) return Future.value();
+        return doPull(1);
+      };
+
+      if (shouldPullMore(initialDemand)) {
+        doPull(initialDemand);
       }
 
-      doPull(initialDemand);
-      canSetState = true;
+      canSetValue = true;
 
       return OffsetIteratorAsyncValue(
         iterator.value.p(O.fold(
@@ -125,7 +133,7 @@ OffsetIteratorAsyncValue<T> Function(
         )),
         iterator.hasMore(),
         initialDemand > 0,
-        doPull,
+        maybePull,
       );
     };
 
