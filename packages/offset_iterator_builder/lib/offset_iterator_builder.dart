@@ -3,12 +3,11 @@ library offset_iterator_builder;
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:fpdt/either.dart' as E;
-import 'package:fpdt/function.dart';
+import 'package:fpdt/fpdt.dart' hide State;
 import 'package:fpdt/option.dart' as O;
-import 'package:fpdt/tuple.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 
-typedef OffsetIteratorValue<T> = E.Either<dynamic, Tuple2<Option<T>, bool>>;
+typedef OffsetIteratorValue<T> = Either<dynamic, Tuple2<Option<T>, bool>>;
 
 typedef OffsetWidgetBuilder<T> = Widget Function(
   BuildContext,
@@ -95,7 +94,7 @@ class _OffsetIteratorBuilderState<T> extends State<OffsetIteratorBuilder<T>> {
 
     final hasMore = iterator.hasMore();
     final newState = item.p(O.fold(
-      () => state.p(E.map((s) => s.copyWith(second: hasMore))),
+      () => state.p(E.map((s) => s.withItem2(hasMore))),
       (item) => E.right(tuple2(O.some(item), hasMore)),
     ));
 

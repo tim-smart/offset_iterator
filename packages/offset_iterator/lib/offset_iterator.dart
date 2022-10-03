@@ -1,6 +1,6 @@
 library offset_iterator;
 
-export 'package:fpdt/option.dart' show Option;
+export 'package:fpdt/fpdt.dart' show Option;
 
 export 'src/consumer_group.dart';
 export 'src/controller.dart';
