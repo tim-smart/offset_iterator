@@ -107,6 +107,8 @@ OffsetIteratorFutureValue<T> iteratorFutureValue<T>(
           false,
           maybePull,
         ));
+
+        return null;
       });
 
   maybePull = () {
