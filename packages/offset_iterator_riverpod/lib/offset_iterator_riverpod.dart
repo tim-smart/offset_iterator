@@ -113,6 +113,8 @@ OffsetIteratorAsyncValue<T> Function(
               false,
               maybePull,
             );
+
+            return null;
           });
 
       maybePull = () {

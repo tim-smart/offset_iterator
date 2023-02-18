@@ -35,7 +35,8 @@ OffsetIterator<List<Post>> postsIterator() => OffsetIterator(
 /// A [Provider] that uses [iteratorValueProvider] to expose an
 /// [OffsetIteratorAsyncValue] for our [postsIterator].
 final postsProvider = Provider.autoDispose(
-    (ref) => iteratorValueProvider<List<Post>>(ref)(postsIterator()));
+    (AutoDisposeProviderRef<OffsetIteratorAsyncValue<List<Post>>> ref) =>
+        iteratorValueProvider<List<Post>>(ref)(postsIterator()));
 
 /// A wrapper widget that uses the value from [postsProvider].
 /// It handles the data / error / loading states.
@@ -148,7 +149,7 @@ class MyHomePage extends ConsumerWidget {
                 left: 16,
                 top: 25,
               ),
-              child: Text('Posts:', style: theme.textTheme.headline5!),
+              child: Text('Posts:', style: theme.textTheme.headlineSmall!),
             ),
           ),
           const PostsListContainer(),
