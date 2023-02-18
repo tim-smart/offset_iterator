@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:fpdt/function.dart';
 import 'package:fpdt/option.dart' as O;
 import 'package:hive/hive.dart';
+// ignore: implementation_imports
 import 'package:hive/src/hive_impl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
