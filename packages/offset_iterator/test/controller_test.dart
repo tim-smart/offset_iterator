@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:fpdt/option.dart' show some;
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:test/test.dart';
 
@@ -24,7 +23,7 @@ void main() {
       sink.add(1);
       sink.add(2);
       sink.add(3);
-      sink.close(some(4));
+      sink.close(const Option.of(4));
 
       expect(await sink.iterator.startFrom(0).toList(), [2, 4, 6, 8]);
     });

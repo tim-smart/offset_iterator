@@ -1,17 +1,17 @@
 name: offset_iterator_builder
 description: A flutter widget builder for the offset_iterator package.
-version: 0.0.9
+version: 0.1.0
 homepage: https://github.com/tim-smart/offset_iterator
 
 environment:
-  sdk: ">=2.14.0 <3.0.0"
+  sdk: ">=3.0.0 <4.0.0"
   flutter: ">=1.17.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  fpdt: ^0.0.29
-  offset_iterator: ^0.0.62
+  elemental: ^0.2.0
+  offset_iterator: ^0.1.0
 
 dev_dependencies:
   flutter_test:

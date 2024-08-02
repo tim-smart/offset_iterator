@@ -2,9 +2,7 @@
 
 library offset_iterator_nucleus;
 
-import 'package:fpdt/fpdt.dart';
-import 'package:fpdt/option.dart' as O;
-import 'package:nucleus/nucleus.dart';
+import 'package:elemental/elemental.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 
 export 'package:offset_iterator/offset_iterator.dart';
@@ -65,7 +63,7 @@ class OffsetIteratorFutureValue<T> extends OffsetIteratorValue<FutureValue<T>> {
 
   bool get isLoading => pulling || value.isLoading;
 
-  Option<T> get data => O.fromNullable(value.dataOrNull);
+  Option<T> get data => Option.fromNullable(value.dataOrNull);
 }
 
 OffsetIteratorFutureValue<T> iteratorFutureValue<T>(
@@ -89,9 +87,9 @@ OffsetIteratorFutureValue<T> iteratorFutureValue<T>(
 
         get.setSelf(OffsetIteratorFutureValue(
           value
-              .p(O.map(FutureValue.data))
-              .p(O.alt(() => O.fromNullable(get.self()?.value)))
-              .p(O.getOrElse(FutureValue.loading)),
+              .map(FutureValue.data)
+              .alt(() => Option.fromNullable(get.self()?.value))
+              .getOrElse(FutureValue.loading),
           iterator.hasMore(),
           pullMore,
           maybePull,
@@ -121,10 +119,10 @@ OffsetIteratorFutureValue<T> iteratorFutureValue<T>(
   }
 
   return OffsetIteratorFutureValue(
-    iterator.value.p(O.fold(
+    iterator.value.match(
       () => const FutureValue.loading(),
       (v) => FutureValue.data(v),
-    )),
+    ),
     iterator.hasMore(),
     initialDemand > 0,
     maybePull,
@@ -158,7 +156,7 @@ AtomWithParent<OffsetIteratorValue<Option<T>>, Atom<OffsetIterator<T>>>
           var value = iterator.value;
 
           get.onDispose(iterator.listen((item) {
-            value = O.some(item);
+            value = Option.of(item);
             get.setSelf(OffsetIteratorValue(
               value,
               iterator.hasMore(),
@@ -170,7 +168,7 @@ AtomWithParent<OffsetIteratorValue<Option<T>>, Atom<OffsetIterator<T>>>
               false,
               false,
             ));
-            value = kNone;
+            value = const None();
           }));
 
           return OffsetIteratorValue(

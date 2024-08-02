@@ -3,9 +3,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:elemental/elemental.dart';
 import 'package:flutter/foundation.dart';
-import 'package:fpdt/function.dart';
-import 'package:fpdt/option.dart' as O;
 import 'package:hive/hive.dart';
 // ignore: implementation_imports
 import 'package:hive/src/hive_impl.dart';
@@ -14,7 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:synchronized/synchronized.dart';
 
 abstract class Storage {
-  O.Option<dynamic> read(String key);
+  Option<dynamic> read(String key);
   Future<bool> write(String key, dynamic value);
   Future<bool> delete(String key);
   Future<bool> clear();
@@ -22,7 +21,7 @@ abstract class Storage {
 
 class NullStorage implements Storage {
   @override
-  O.Option<dynamic> read(String key) => O.none();
+  Option<dynamic> read(String key) => const Option.none();
 
   @override
   Future<bool> write(String key, value) => Future.value(true);
@@ -40,22 +39,22 @@ class HiveStorage implements Storage {
   static Future<HiveStorage> build({
     String boxName = 'offset_iterator_persist',
   }) {
-    return _lock.synchronized(() =>
-        _instance.p(O.map((i) => Future.value(i))).p(O.getOrElse(() async {
-          final hive = HiveImpl();
-          final dir = await getTemporaryDirectory();
-          if (!kIsWeb) hive.init(dir.path);
+    return _lock.synchronized(
+        () => _instance.map((i) => Future.value(i)).getOrElse(() async {
+              final hive = HiveImpl();
+              final dir = await getTemporaryDirectory();
+              if (!kIsWeb) hive.init(dir.path);
 
-          final box = await hive.openBox<dynamic>(boxName);
+              final box = await hive.openBox<dynamic>(boxName);
 
-          final instance = HiveStorage._(box);
-          _instance = O.some(instance);
-          return instance;
-        })));
+              final instance = HiveStorage._(box);
+              _instance = Option.of(instance);
+              return instance;
+            }));
   }
 
   static final _lock = Lock();
-  static O.Option<HiveStorage> _instance = O.none();
+  static Option<HiveStorage> _instance = const Option.none();
 
   final Box<dynamic> _box;
 
@@ -67,8 +66,8 @@ class HiveStorage implements Storage {
       : Future.value(false);
 
   @override
-  O.Option<dynamic> read(String key) =>
-      _box.isOpen ? O.fromNullable(_box.get(key)) : O.none();
+  Option<dynamic> read(String key) =>
+      _box.isOpen ? Option.fromNullable(_box.get(key)) : const Option.none();
 
   @override
   Future<bool> write(String key, dynamic value) =>
@@ -99,17 +98,17 @@ class SharedPreferencesStorage implements Storage {
   String _prefixKey(String key) => '${prefix}_$key';
 
   @override
-  O.Option<dynamic> read(String key) => _prefs
+  Option<dynamic> read(String key) => _prefs
       .getString(_prefixKey(key))
-      .p(O.fromNullable)
-      .p(O.chainTryCatchK(jsonDecode));
+      .p(Option.fromNullable)
+      .flatMapThrowable(jsonDecode);
 
   @override
   Future<bool> write(String key, dynamic value) =>
-      _lock.synchronized(() => O.tryCatch(() => jsonEncode(value)).p(O.fold(
+      _lock.synchronized(() => Option.tryCatch(() => jsonEncode(value)).match(
             () => false,
             (json) => _prefs.setString(_prefixKey(key), json),
-          )));
+          ));
 
   @override
   Future<bool> delete(String key) =>

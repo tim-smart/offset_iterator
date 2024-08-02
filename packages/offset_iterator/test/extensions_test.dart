@@ -1,8 +1,6 @@
 import 'dart:async';
 
-import 'package:fpdt/fpdt.dart';
-import 'package:fpdt/either.dart' show left, right;
-import 'package:fpdt/option.dart' show some, none;
+import 'package:elemental/elemental.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:test/test.dart';
 
@@ -15,7 +13,7 @@ void main() {
             i + 1000,
           ]);
 
-      expect(i.value, none());
+      expect(i.value, const Option.none());
       expect(i.offset, 0);
       expect(await i.toList(), equals([1, 101, 1001, 2, 102, 1002]));
     });
@@ -57,9 +55,9 @@ void main() {
           i + 100,
           i + 1000,
         ];
-      }, seed: () => some(0));
+      }, seed: () => const Option.of(0));
 
-      expect(i.value, some(0));
+      expect(i.value, const Option.of(0));
       expect(i.offset, 0);
       expect(
           await i.startFrom(0).toList(), equals([1, 101, 1001, 2, 102, 1002]));
@@ -68,7 +66,7 @@ void main() {
     test('bubbleCancellation cancels the parent', () async {
       final parent = OffsetIterator.range(1, end: 5);
       final i = parent.map((i) => i * 2).transform((i) => [i]);
-      expect(await i.pull(), some(2));
+      expect(await i.pull(), const Option.of(2));
       await i.cancel();
       expect(parent.drained, true);
     });
@@ -78,7 +76,7 @@ void main() {
       final i = parent
           .map((i) => i * 2)
           .transform((i) => [i], bubbleCancellation: false);
-      expect(await i.pull(), some(2));
+      expect(await i.pull(), const Option.of(2));
       await i.cancel();
       expect(parent.drained, false);
     });
@@ -86,10 +84,11 @@ void main() {
 
   group('map', () {
     test('transforms the items including the seed', () async {
-      final i = OffsetIterator.fromIterable([2, 3], seed: () => some(1))
-          .map((i) => i * 2);
+      final i =
+          OffsetIterator.fromIterable([2, 3], seed: () => const Option.of(1))
+              .map((i) => i * 2);
 
-      expect(i.value, some(2));
+      expect(i.value, const Option.of(2));
       expect(i.offset, 0);
       expect(await i.toList(), equals([4, 6]));
     });
@@ -97,15 +96,15 @@ void main() {
     test('startOffset allows replay', () async {
       final i = OffsetIterator.fromIterable(
         [2, 3],
-        seed: () => some(1),
+        seed: () => const Option.of(1),
         retention: -1,
       );
       await i.run();
-      expect(i.log.toList(), [some(1), some(2)]);
+      expect(i.log.toList(), [const Option.of(1), const Option.of(2)]);
 
       final mapped = i.startFrom(0).map((i) => i * 2);
 
-      expect(mapped.value, some(2));
+      expect(mapped.value, const Option.of(2));
       expect(mapped.offset, 0);
       expect(await mapped.toList(), equals([4, 6]));
     });
@@ -116,11 +115,12 @@ void main() {
         retention: -1,
       );
       await i.run();
-      expect(i.log.toList(), [none(), some(1), some(2)]);
+      expect(i.log.toList(),
+          [const Option.none(), const Option.of(1), const Option.of(2)]);
 
       final mapped = i.startFrom(0).map((i) => i * 2);
 
-      expect(mapped.value, none());
+      expect(mapped.value, const Option.none());
       expect(mapped.offset, 0);
       expect(await mapped.toList(), equals([2, 4, 6]));
     });
@@ -129,9 +129,9 @@ void main() {
   group('asyncMap', () {
     test('transforms the items', () async {
       final i = OffsetIterator.fromIterable([2, 3])
-          .asyncMap((i) async => i * 2, seed: () => some(2));
+          .asyncMap((i) async => i * 2, seed: () => const Option.of(2));
 
-      expect(i.value, some(2));
+      expect(i.value, const Option.of(2));
       expect(i.offset, 0);
       expect(await i.toList(), equals([4, 6]));
     });
@@ -142,16 +142,16 @@ void main() {
       final i = OffsetIterator.fromIterable([1, 2, 3])
           .scan<int>(0, (acc, i) => acc + i);
 
-      expect(i.value, none());
+      expect(i.value, const Option.none());
       expect(i.offset, 0);
       expect(await i.toList(), equals([1, 3, 6]));
     });
 
     test('allows the seed to be set', () async {
       final i = OffsetIterator.fromIterable([1, 2, 3])
-          .scan<int>(0, (acc, i) => acc + i, seed: () => some(-1));
+          .scan<int>(0, (acc, i) => acc + i, seed: () => const Option.of(-1));
 
-      expect(i.value, some(-1));
+      expect(i.value, const Option.of(-1));
       expect(i.offset, 0);
       expect(await i.toList(), equals([1, 3, 6]));
     });
@@ -161,11 +161,12 @@ void main() {
     test('runs the effect function for each item', () async {
       final processed = <int>[];
       final i =
-          OffsetIterator.fromIterable([1, 2, 3], seed: () => some(0)).tap((i) {
+          OffsetIterator.fromIterable([1, 2, 3], seed: () => const Option.of(0))
+              .tap((i) {
         processed.add(i);
       });
 
-      expect(i.value, some(0));
+      expect(i.value, const Option.of(0));
 
       expect(await i.toList(), equals([1, 2, 3]));
       expect(processed, equals([1, 2, 3]));
@@ -176,11 +177,12 @@ void main() {
     test('runs the effect function for each item', () async {
       final processed = <int>[];
       final i =
-          OffsetIterator.fromIterable([1, 2, 3], seed: () => some(0)).tap((i) {
+          OffsetIterator.fromIterable([1, 2, 3], seed: () => const Option.of(0))
+              .tap((i) {
         processed.add(i);
       });
 
-      expect(i.value, some(0));
+      expect(i.value, const Option.of(0));
 
       expect(await i.toList(), equals([1, 2, 3]));
       expect(processed, equals([1, 2, 3]));
@@ -189,11 +191,10 @@ void main() {
 
   group('distinct', () {
     test('removes sequential duplicates', () async {
-      final i =
-          OffsetIterator.fromIterable([1, 1, 2, 2, 3, 3], seed: () => some(1))
-              .distinct();
+      final i = OffsetIterator.fromIterable([1, 1, 2, 2, 3, 3],
+          seed: () => const Option.of(1)).distinct();
 
-      expect(i.value, some(1));
+      expect(i.value, const Option.of(1));
 
       expect(await i.toList(), equals([2, 3]));
     });
@@ -201,29 +202,27 @@ void main() {
     test('removes sequential duplicates without seed', () async {
       final i = OffsetIterator.fromIterable([1, 1, 2, 2, 3, 3]).distinct();
 
-      expect(i.value, none());
+      expect(i.value, const Option.none());
       expect(await i.toList(), equals([1, 2, 3]));
     });
   });
 
   group('takeWhile', () {
     test('emits items until predicate returns false', () async {
-      final i =
-          OffsetIterator.fromIterable([1, 2, 3, 4, 5], seed: () => some(0))
-              .takeWhile((i, prev) => i < 3);
+      final i = OffsetIterator.fromIterable([1, 2, 3, 4, 5],
+          seed: () => const Option.of(0)).takeWhile((i, prev) => i < 3);
 
-      expect(i.value, some(0));
+      expect(i.value, const Option.of(0));
       expect(await i.toList(), equals([1, 2]));
     });
   });
 
   group('takeUntil', () {
     test('emits items until predicate returns true', () async {
-      final i =
-          OffsetIterator.fromIterable([1, 2, 3, 4, 5], seed: () => some(0))
-              .takeUntil((i, prev) => i >= 3);
+      final i = OffsetIterator.fromIterable([1, 2, 3, 4, 5],
+          seed: () => const Option.of(0)).takeUntil((i, prev) => i >= 3);
 
-      expect(i.value, some(0));
+      expect(i.value, const Option.of(0));
       expect(await i.toList(), equals([1, 2]));
     });
   });
@@ -236,7 +235,7 @@ void main() {
         const [7, 8, 9],
       ]).accumulate();
 
-      expect(i.value, none());
+      expect(i.value, const Option.none());
       expect(
         await i.toList(),
         equals([
@@ -256,7 +255,7 @@ void main() {
         IList(const [7, 8, 9]),
       ]).accumulateIList();
 
-      expect(i.value, none());
+      expect(i.value, const Option.none());
       expect(
         await i.toList(),
         equals([
@@ -283,17 +282,17 @@ void main() {
             hasMore: acc < 10,
           );
         },
-        seed: () => some(-1),
+        seed: () => const Option.of(-1),
       ).handleError((err, stack, retry) {
         handled = true;
         return null;
       }).map((i) => i * 2);
 
-      expect(i.value, some(-2));
-      expect(await i.pull(), some(0));
-      expect(await i.pull(), some(2));
-      expect(await i.pull(), some(4));
-      expect(await i.pull(), none());
+      expect(i.value, const Option.of(-2));
+      expect(await i.pull(), const Option.of(0));
+      expect(await i.pull(), const Option.of(2));
+      expect(await i.pull(), const Option.of(4));
+      expect(await i.pull(), const Option.none());
       expect(await i.toList(), equals([]));
       expect(handled, equals(true));
     });
@@ -311,16 +310,16 @@ void main() {
             hasMore: true,
           );
         },
-        seed: () => some(-1),
+        seed: () => const Option.of(-1),
         cancelOnError: false,
       ).handleError((err, stack, retry) {
         retries.add(retry);
         return true;
       });
 
-      expect(i.value, some(-1));
-      expect(await i.pull(), some(0));
-      expect(await i.pull(), some(1));
+      expect(i.value, const Option.of(-1));
+      expect(await i.pull(), const Option.of(0));
+      expect(await i.pull(), const Option.of(1));
       await expectLater(i.pull, throwsA('fail'));
       expect(retries, [1, 2, 3, 4, 5]);
     });
@@ -355,10 +354,10 @@ void main() {
           i + 100,
           i + 1000,
         ]),
-        seed: () => some(0),
+        seed: () => const Option.of(0),
       );
 
-      expect(i.value, some(0));
+      expect(i.value, const Option.of(0));
       expect(i.offset, 0);
       expect(await i.toList(), equals([1, 101, 1001, 2, 102, 1002]));
     });
@@ -377,27 +376,27 @@ void main() {
         concurrency: 3,
       );
 
-      expect(await i.pull(), some(1));
+      expect(await i.pull(), const Option.of(1));
       expect(running, equals(3));
-      expect(await i.pull(), some(101));
+      expect(await i.pull(), const Option.of(101));
       expect(running, equals(3));
 
-      expect(await i.pull(), some(2));
+      expect(await i.pull(), const Option.of(2));
       expect(running, equals(2));
-      expect(await i.pull(), some(102));
+      expect(await i.pull(), const Option.of(102));
       expect(running, equals(2));
 
-      expect(await i.pull(), some(3));
+      expect(await i.pull(), const Option.of(3));
       expect(running, equals(1));
-      expect(await i.pull(), some(103));
+      expect(await i.pull(), const Option.of(103));
       expect(running, equals(1));
 
-      expect(await i.pull(), some(4));
+      expect(await i.pull(), const Option.of(4));
       expect(running, equals(0));
-      expect(await i.pull(), some(104));
+      expect(await i.pull(), const Option.of(104));
       expect(running, equals(0));
 
-      expect(await i.pull(), none());
+      expect(await i.pull(), const Option.none());
     });
   });
 
@@ -406,9 +405,9 @@ void main() {
       final i = OffsetIterator.range(1, end: 5);
       final prefetched = i.prefetch();
 
-      expect(await prefetched.pull(), some(1));
+      expect(await prefetched.pull(), const Option.of(1));
       expect(i.offset, equals(2));
-      expect(i.value, equals(some(2)));
+      expect(i.value, equals(const Option.of(2)));
 
       expect(await prefetched.toList(), [2, 3, 4, 5]);
     });

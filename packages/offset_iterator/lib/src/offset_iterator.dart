@@ -1,10 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:fpdt/function.dart';
-import 'package:fpdt/either.dart' as E;
-import 'package:fpdt/option.dart' show Some, None;
-import 'package:fpdt/option.dart' as O;
+import 'package:elemental/elemental.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 
 class OffsetIteratorState<T> {
@@ -23,20 +20,20 @@ class OffsetIteratorState<T> {
   final StackTrace? stackTrace;
 }
 
-extension OptionExtension<A> on O.Option<A> {
+extension OptionExtension<A> on Option<A> {
   /// Helper function to unwrap values from `pull`.
   B when<B>({
     required B Function(A value) some,
     required B Function() none,
   }) =>
-      O.fold(none, some)(this);
+      match(none, some);
 
   /// Helper function to unwrap values from `pull`.
   B fold<B>(
     B Function() onNone,
     B Function(A value) onSome,
   ) =>
-      O.fold(onNone, onSome)(this);
+      match(onNone, onSome);
 }
 
 typedef InitCallback = FutureOr<dynamic> Function();
@@ -94,7 +91,7 @@ class OffsetIterator<T> {
     return _processingCompleter!.future;
   }
 
-  Option<T> _value = O.kNone;
+  Option<T> _value = const None();
 
   /// Get the current head value as an option.
   Option<T> get value {
@@ -103,7 +100,7 @@ class OffsetIterator<T> {
   }
 
   /// Get the current head value, or `null`.
-  T? get valueOrNull => O.toNullable(value);
+  T? get valueOrNull => value.toNullable();
 
   /// How many items to retain in the log.
   /// If set to a negative number (e.g. -1), it will retain everything.
@@ -361,14 +358,14 @@ class OffsetIterator<T> {
     _maybeSeedValue();
 
     if (startOffset != null) {
-      return valueAt(startOffset).p(O.fold(
+      return valueAt(startOffset).match(
         () => fallback,
-        (v) => () => O.some(v),
-      ));
+        (v) => () => Option.of(v),
+      );
     }
 
-    final fallbackOption = O.fromNullable(fallback);
-    return () => value.p(O.alt(() => fallbackOption.p(O.flatMap((f) => f()))));
+    final fallbackOption = Option.fromNullable(fallback);
+    return () => value.alt(() => fallbackOption.flatMap((f) => f()));
   }
 
   /// Helper method to generate a [CleanupCallback]
@@ -413,32 +410,32 @@ class OffsetIterator<T> {
   /// seed value.
   ///
   /// Items are wrapped in [E.Either], so errors don't cancel the subscription.
-  static OffsetIterator<E.Either<dynamic, T>> fromStreamEither<T>(
+  static OffsetIterator<Either<dynamic, T>> fromStreamEither<T>(
     Stream<T> stream, {
     int retention = 0,
-    SeedCallback<E.Either<dynamic, T>>? seed,
+    SeedCallback<Either<dynamic, T>>? seed,
     String name = 'OffsetIterator.fromStreamEither',
   }) {
-    final valueStreamSeed = O
-        .tryCatch(() => (stream as dynamic).valueOrNull as T?)
-        .p(O.chainNullableK(identity));
+    final valueStreamSeed =
+        Option.tryCatch(() => (stream as dynamic).valueOrNull as T?)
+            .flatMapNullable(identity);
 
-    stream = valueStreamSeed.p(O.fold(
+    stream = valueStreamSeed.match(
       () => stream,
       (_) => stream.skip(1),
-    ));
+    );
 
-    final eitherStream = stream
-        .transform(StreamTransformer<T, E.Either<dynamic, T>>.fromHandlers(
-      handleData: (data, sink) => sink.add(E.right(data)),
-      handleError: (error, stack, sink) => sink.add(E.left(error)),
+    final eitherStream =
+        stream.transform(StreamTransformer<T, Either<dynamic, T>>.fromHandlers(
+      handleData: (data, sink) => sink.add(Either.right(data)),
+      handleError: (error, stack, sink) => sink.add(Either.left(error)),
     ));
 
     return OffsetIterator(
       name: name,
       init: () => StreamIterator(eitherStream),
       process: (i) async {
-        final iter = i as StreamIterator<E.Either<dynamic, T>>;
+        final iter = i as StreamIterator<Either<dynamic, T>>;
         final available = await iter.moveNext();
 
         if (!available) {
@@ -452,7 +449,7 @@ class OffsetIterator<T> {
         );
       },
       cleanup: (i) => (i as StreamIterator).cancel(),
-      seed: seed ?? () => valueStreamSeed.p(O.map(E.right)),
+      seed: seed ?? () => valueStreamSeed.map((a) => Either.right(a)),
       retention: retention,
     );
   }
@@ -467,14 +464,15 @@ class OffsetIterator<T> {
     String name = 'OffsetIterator.fromStream',
     bool cancelOnError = true,
   }) {
-    final eitherSeed = seed != null ? () => seed().p(O.map(E.right)) : null;
+    final eitherSeed =
+        seed != null ? () => seed().map((a) => Either.right(a)) : null;
 
     return fromStreamEither<T>(
       stream,
       seed: eitherSeed,
       name: name,
     ).map(
-      E.fold((l) => throw l, identity),
+      (a) => a.match((l) => throw l, identity),
       retention: retention,
       cancelOnError: cancelOnError,
     );

@@ -1,4 +1,3 @@
-import 'package:fpdt/option.dart' show some;
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:test/test.dart';
 
@@ -11,19 +10,19 @@ void main() {
       final child2 = g.consumer();
 
       expect(parent.earliestAvailableOffset, 0);
-      expect(await child1.pull(), equals(some(0)));
+      expect(await child1.pull(), equals(const Option.of(0)));
       await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 1);
 
-      expect(await child1.pull(), equals(some(1)));
+      expect(await child1.pull(), equals(const Option.of(1)));
       await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 1);
 
-      expect(await child2.pull(), equals(some(0)));
+      expect(await child2.pull(), equals(const Option.of(0)));
       await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 2);
 
-      expect(await child2.pull(), equals(some(1)));
+      expect(await child2.pull(), equals(const Option.of(1)));
       await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 2);
       expect(parent.log.isEmpty, true);
@@ -31,9 +30,10 @@ void main() {
       expect(await child1.toList(), [2, 3, 4, 5]);
       await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 3);
-      expect(parent.log.toList(), [some(2), some(3), some(4)]);
+      expect(parent.log.toList(),
+          [const Option.of(2), const Option.of(3), const Option.of(4)]);
 
-      expect(await child2.pull(), equals(some(2)));
+      expect(await child2.pull(), equals(const Option.of(2)));
       await Future.microtask(() {});
       expect(parent.earliestAvailableOffset, 4);
 
@@ -54,12 +54,12 @@ void main() {
         0,
         end: 5,
         retention: -1,
-        seed: () => some(-1),
+        seed: () => const Option.of(-1),
       );
       final g = parent.consumerGroup();
       final child = g.consumer();
 
-      expect(child.value, some(-1));
+      expect(child.value, const Option.of(-1));
 
       expect(parent.status, OffsetIteratorStatus.seeded);
       expect(child.status, OffsetIteratorStatus.seeded);

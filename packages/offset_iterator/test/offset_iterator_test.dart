@@ -1,8 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:fpdt/either.dart' show left, right;
-import 'package:fpdt/option.dart' show some, none;
+import 'package:elemental/elemental.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:test/test.dart';
@@ -75,7 +74,7 @@ void main() {
     test('sets the seed if a ValueStream is provided', () async {
       final i = OffsetIterator.fromStream(
           Stream.fromIterable([1, 2, 3, 4, 5]).shareValueSeeded(0));
-      expect(i.value, some(0));
+      expect(i.value, const Option.of(0));
       expect(await i.toList(), equals([1, 2, 3, 4, 5]));
     });
 
@@ -83,7 +82,7 @@ void main() {
       final i = OffsetIterator.fromStream(Stream.fromIterable([1, 2, 3, 4, 5])
           .asyncExpand((i) => i == 2 ? Stream.error('fail') : Stream.value(i)));
 
-      expect(await i.pull(), equals(some(1)));
+      expect(await i.pull(), equals(const Option.of(1)));
       await expectLater(i.pull, throwsA('fail'));
       expect(i.drained, true);
     });
@@ -118,11 +117,11 @@ void main() {
       expect(
         await i.toList(),
         [
-          right(1),
-          left('fail'),
-          right(3),
-          right(4),
-          right(5),
+          Either.right(1),
+          Either.left('fail'),
+          Either.right(3),
+          Either.right(4),
+          Either.right(5),
         ],
       );
     });
@@ -169,11 +168,11 @@ void main() {
         'brown',
         'fox',
       ]);
-      expect(await i.pull(), some('the'));
-      expect(await i.pull(), some('quick'));
-      expect(await i.pull(), some('brown'));
-      expect(await i.pull(), some('fox'));
-      expect(await i.pull(), none());
+      expect(await i.pull(), const Option.of('the'));
+      expect(await i.pull(), const Option.of('quick'));
+      expect(await i.pull(), const Option.of('brown'));
+      expect(await i.pull(), const Option.of('fox'));
+      expect(await i.pull(), const Option.none());
     });
 
     test(
@@ -185,14 +184,14 @@ void main() {
         'brown',
         'fox',
       ], retention: -1);
-      expect(await i.pull(), some('the'));
-      expect(await i.pull(), some('quick'));
-      expect(await i.pull(), some('brown'));
-      expect(await i.pull(), some('fox'));
-      expect(await i.pull(), none());
+      expect(await i.pull(), const Option.of('the'));
+      expect(await i.pull(), const Option.of('quick'));
+      expect(await i.pull(), const Option.of('brown'));
+      expect(await i.pull(), const Option.of('fox'));
+      expect(await i.pull(), const Option.none());
 
-      expect(await i.pull(3), some('fox'));
-      expect(await i.pull(0), some('the'));
+      expect(await i.pull(3), const Option.of('fox'));
+      expect(await i.pull(0), const Option.of('the'));
 
       // If offset is out of range, it throws a RangeError
       await expectLater(() => i.pull(-1), throwsRangeError);
@@ -207,8 +206,9 @@ void main() {
         retention: 3,
       );
       expect(await i.toList(), equals([1, 2, 3, 4, 5]));
-      expect(i.value, equals(some(5)));
-      expect(i.log.toList(), equals([some(2), some(3), some(4)]));
+      expect(i.value, equals(const Option.of(5)));
+      expect(i.log.toList(),
+          equals([const Option.of(2), const Option.of(3), const Option.of(4)]));
       expect(i.earliestAvailableOffset, equals(2));
 
       expect(await i.startFrom(0).toList(), equals([2, 3, 4, 5]));
@@ -244,37 +244,39 @@ void main() {
       await i.pull();
       i.cancel();
 
-      expect(await i.pull(), none());
+      expect(await i.pull(), const Option.none());
       expect(await i.startFrom(0).toList(), equals([1, 2]));
     });
   });
 
   group('.generateSeed', () {
     test('by default returns a seed that returns the latest value', () async {
-      final i = OffsetIterator.range(0, end: 5, seed: () => some(-1));
+      final i =
+          OffsetIterator.range(0, end: 5, seed: () => const Option.of(-1));
 
       expect(i.status, OffsetIteratorStatus.unseeded);
       final seed = i.generateSeed();
       expect(i.status, OffsetIteratorStatus.seeded);
-      expect(seed!(), some(-1));
+      expect(seed!(), const Option.of(-1));
     });
 
     test('accepts an override', () async {
-      final i = OffsetIterator.range(0, end: 5, seed: () => some(-1));
+      final i =
+          OffsetIterator.range(0, end: 5, seed: () => const Option.of(-1));
 
       expect(i.status, OffsetIteratorStatus.unseeded);
-      final seed = i.generateSeed(override: () => some(-2));
+      final seed = i.generateSeed(override: () => const Option.of(-2));
       expect(i.status, OffsetIteratorStatus.unseeded);
-      expect(seed!(), some(-2));
+      expect(seed!(), const Option.of(-2));
     });
 
     test('accepts a fallback', () async {
       final i = OffsetIterator.range(0, end: 5);
 
       expect(i.status, OffsetIteratorStatus.unseeded);
-      final seed = i.generateSeed(fallback: () => some(-2));
+      final seed = i.generateSeed(fallback: () => const Option.of(-2));
       expect(i.status, OffsetIteratorStatus.seeded);
-      expect(seed!(), some(-2));
+      expect(seed!(), const Option.of(-2));
     });
   });
 
@@ -283,7 +285,7 @@ void main() {
       final i = OffsetIterator.range(0, end: 5);
 
       expect(i.status, OffsetIteratorStatus.unseeded);
-      expect(i.value, none());
+      expect(i.value, const Option.none());
       expect(i.status, OffsetIteratorStatus.seeded);
     });
 
@@ -346,7 +348,13 @@ void main() {
 
       i.earliestAvailableOffset = 7;
       expect(i.earliestAvailableOffset, 1);
-      expect(i.log.toList(), [some(0), some(1), some(2), some(3), some(4)]);
+      expect(i.log.toList(), [
+        const Option.of(0),
+        const Option.of(1),
+        const Option.of(2),
+        const Option.of(3),
+        const Option.of(4)
+      ]);
 
       i.earliestAvailableOffset = 6;
       expect(i.earliestAvailableOffset, 6);

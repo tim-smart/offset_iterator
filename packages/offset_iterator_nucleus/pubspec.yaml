@@ -1,16 +1,16 @@
 name: offset_iterator_nucleus
 description: Helper functions for using offset_iterator with the nucleus package
-version: 0.0.8
+version: 0.1.0
 homepage: https://github.com/tim-smart/offset_iterator
 
 environment:
-  sdk: '>=2.17.0 <3.0.0'
+  sdk: ">=3.0.0 <4.0.0"
 
 dev_dependencies:
-  lints: ^2.0.0
+  lints: ^4.0.0
   test: ^1.16.0
 
 dependencies:
-  fpdt: "any"
-  nucleus: ^0.3.0
-  offset_iterator: ^0.0.64
+  elemental: ^0.2.0
+  nucleus: ^0.4.1
+  offset_iterator: ^0.1.0

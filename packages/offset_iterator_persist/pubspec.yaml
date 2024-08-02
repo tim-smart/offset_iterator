@@ -1,19 +1,18 @@
 name: offset_iterator_persist
 description: Persistence extension for offset_iterator
-version: 0.0.20
+version: 0.1.0
 homepage: https://github.com/tim-smart/offset_iterator
 
 environment:
-  sdk: ">=2.12.0 <3.0.0"
+  sdk: ">=3.0.0 <4.0.0"
   flutter: ">=1.17.0"
 
 dependencies:
-  fast_immutable_collections: ^7.0.3
+  elemental: ^0.2.0
   flutter:
     sdk: flutter
-  fpdt: ^0.1.0
   hive: ^2.0.4
-  offset_iterator: ^0.0.62
+  offset_iterator: ^0.1.0
   path_provider: ^2.0.7
   shared_preferences: ^2.0.9
   synchronized: ^3.0.0
@@ -21,4 +20,4 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^1.0.0
+  flutter_lints: ^4.0.0

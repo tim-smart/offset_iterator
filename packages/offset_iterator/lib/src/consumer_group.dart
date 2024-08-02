@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:fpdt/function.dart';
-import 'package:fpdt/option.dart' as O;
 import 'package:offset_iterator/src/offset_iterator.dart';
 
 extension ConsumerGroupExtension<T> on OffsetIterator<T> {
@@ -47,7 +45,7 @@ class ConsumerGroup<T> {
         _childPulledOffset(i, offset);
         return OffsetIteratorState(
           acc: offset + 1,
-          chunk: item.p(O.fold(() => null, (v) => [v])),
+          chunk: item.match(() => null, (v) => [v]),
           hasMore: iterator.hasMore(offset + 1),
         );
       },

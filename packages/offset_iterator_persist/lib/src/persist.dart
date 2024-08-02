@@ -1,8 +1,6 @@
 // ignore_for_file: library_prefixes
 
-import 'package:fast_immutable_collections/fast_immutable_collections.dart';
-import 'package:fpdt/function.dart';
-import 'package:fpdt/option.dart' as O;
+import 'package:elemental/elemental.dart';
 import 'package:offset_iterator/offset_iterator.dart';
 import 'package:offset_iterator_persist/src/storage.dart';
 
@@ -14,7 +12,7 @@ Option<T> _readCache<T>(
 ) {
   if (cache != null && cache.containsKey(key)) return cache[key];
 
-  final data = storage.read(key).p(O.chainTryCatchK(fromJson));
+  final data = storage.read(key).flatMapThrowable(fromJson);
   cache?[key] = data;
   return data;
 }
@@ -29,7 +27,7 @@ void Function(T) _writeCache<T>(
       try {
         storage.write(key, toJson(value));
       } catch (_) {}
-      cache?[key] = O.some(value);
+      cache?[key] = Option.of(value);
     };
 
 bool iListSublistEquality<T>(IList<T> prev, IList<T> next) {
@@ -61,23 +59,23 @@ extension PersistExtension<T> on OffsetIterator<T> {
   }) {
     final currentValue = _readCache(storage, cache, key, fromJson);
     final write = _writeCache(storage, cache, key, toJson);
-    final seed = currentValue.p(O.fold(
+    final seed = currentValue.match(
       () => generateSeed(fallback: fallbackSeed),
-      (v) => () => O.some(v),
-    ));
-    Option<T> prev = const O.None();
+      (v) => () => Option.of(v),
+    );
+    Option<T> prev = const None();
 
     return tap(
       (item) {
         Future.microtask(() {
-          if (O.isSome(prev) &&
+          if (prev is Some &&
               equals != null &&
-              equals((prev as O.Some).value, item)) {
+              equals((prev as Some).value, item)) {
             return;
           }
 
           write(item);
-          prev = O.Some(item);
+          prev = Option.of(item);
         });
       },
       seed: () {
